@@ -9,5 +9,6 @@ from .resources import sourcemeter, list_resources
 from .pid import pid
 from . import instruments
 from . import pid_controls
-from . import global_settings_pid, global_settings_ivl
+from . import global_settings_pid, global_settings_ivl, global_settings_iv
 from . import ivl_setups
+from . import configurations

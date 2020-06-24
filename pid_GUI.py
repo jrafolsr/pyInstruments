@@ -12,9 +12,9 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
-import pyLab_v2.global_settings_pid as gs # Globals
+import pyInstruments.global_settings_pid as gs # Globals
 from dash.dependencies import Input, Output, State
-import pyLab_v2.pid_controls as pyPID
+import pyInstruments.pid_controls as pyPID
 from collections import deque
 
 global N_CLICK_PREVIOUS, MAX_LENGTH
@@ -250,5 +250,5 @@ def heating_mode(on):
     return [label]
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port = 8052)
     

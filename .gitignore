@@ -1,3 +1,4 @@
 __pycache__/
 *.pyc
 instruments/__pycache__/
+*.txt

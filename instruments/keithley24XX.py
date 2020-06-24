@@ -111,8 +111,8 @@ class keithley24XX(sourcemeter):
             - term = 'FRONT': The default terminal is FRONT. REAR can also be passed.
             - compl = 10: Set the compliance in volts, default is 10 V.
             - beeper = True: Enables or disables the beeper 
-
             HAVE FUN! """
+        print('HAHAHAHAHA')
         self.inst.write("*RST")                  # Reset instrument to default parameters.
         self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT %i" % beeper) # Turn on/off the beeper

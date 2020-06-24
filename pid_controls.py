@@ -6,9 +6,9 @@ Created on Thu Oct  4 11:24:33 2018
 """
 #%%
 from time import sleep, time
-from pyLab_v2.instruments import keysight34461A, agilentE3631A # This the module I created
-import pyLab_v2.pid as pid_object
-import pyLab_v2.global_settings_pid as gs
+from pyInstruments.instruments import keysight34461A, agilentE3631A # This the module I created
+import pyInstruments.pid as pid_object
+import pyInstruments.global_settings_pid as gs
 
 import datetime
 from numpy import sqrt, isclose
