@@ -119,6 +119,13 @@ app.layout = html.Div(children =  [
                   disabled = False,
                   style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
                 ),
+             daq.BooleanSwitch(
+                  id='config-switch',
+                  label = 'Config',
+                  on = False,
+                  disabled = False,
+                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
+                ),
             daq.PrecisionInput(
                 id='value-input',
                 label = f'Current input is 0.00 mA',
@@ -195,7 +202,8 @@ def update_graph_live(n, n_clear,figure):
 @app.callback([Output('my-daq-startbutton', 'buttonText'),
                Output('my-daq-indicator', 'color'),
                Output('interval-component', 'disabled'),
-               Output('mode-switch', 'disabled')],
+               Output('mode-switch', 'disabled'),
+               Output('config-switch', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
                [State('power-button', 'on'),
                 State('dropdown-menu', 'value')])
@@ -204,7 +212,7 @@ def change_status_on(N, on, resource):
     label = 'Start'
     
     if on is False:
-        return label, color[1], True, on
+        return label, color[1], True, on, on
     
     status = calc_status(N + 1) and on
     
@@ -226,7 +234,7 @@ def change_status_on(N, on, resource):
         else:
             pass
         
-        return label, color[int(not status)], not status, on
+        return label, color[int(not status)], not status, on, on
 
     except Exception as e:
          print('ERROR: An error occured in starting the instrument')
@@ -238,23 +246,23 @@ def change_status_on(N, on, resource):
                Output('my-daq-startbutton', 'n_clicks')],
         [Input('power-button', 'on')],
          [State('dropdown-menu', 'value'),
-          State('my-daq-startbutton', 'n_clicks')])
-def start_instrument(on, resource, N):
+          State('my-daq-startbutton', 'n_clicks'),
+          State('config-switch', 'on')])
+def start_instrument(on, resource, N, config_flag):
     if on is None:
         return ['Power off'], True, 0
     try:
         if on:
             label = 'Power ON'
-            gs.CONFIG_STATUS =  True
+            gs.CONFIG_STATUS = config_flag
             gs.set_configuration('resource1', resource)
             args, kwargs = gs.get_configuration()
-            print(kwargs)
             iv_setup(*args, **kwargs)
             sleep(0.5)
             return [label], False, N
         else:
             gs.MEASUREMENT_ON =  False
-            gs.CONFIG_STATUS =  True
+            gs.CONFIG_STATUS =  config_flag
             print('INFO: Instrument is off')
             label = 'Power OFF'
             return [label], True, 0
@@ -309,5 +317,5 @@ def set_filename(value):
 
 if __name__ == '__main__':
 #    Timer(1, open_browser, args = (PORT,)).start();
-    app.run_server(debug=True, port = PORT)
+    app.run_server(debug = True, port = PORT)
     
