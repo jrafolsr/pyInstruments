@@ -206,7 +206,8 @@ def update_graph_live(n, n_clear,figure):
                Output('config-switch', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
                [State('power-button', 'on'),
-                State('dropdown-menu', 'value')])
+                State('dropdown-menu', 'value')],
+                prevent_initial_call = True)
 def change_status_on(N, on, resource):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
@@ -247,10 +248,17 @@ def change_status_on(N, on, resource):
         [Input('power-button', 'on')],
          [State('dropdown-menu', 'value'),
           State('my-daq-startbutton', 'n_clicks'),
-          State('config-switch', 'on')])
+          State('config-switch', 'on')],
+          prevent_initial_call = True)
 def start_instrument(on, resource, N, config_flag):
     if on is None:
-        return ['Power off'], True, 0
+        return ['Power off'], True, 
+    
+    if config_flag:
+        gs.set_configuration('interrupt_measurement', True)
+    else:
+        gs.set_configuration('interrupt_measurement', False)
+    
     try:
         if on:
             label = 'Power ON'
@@ -274,8 +282,8 @@ def start_instrument(on, resource, N, config_flag):
 @app.callback([Output('value-input', 'label'),
                Output('mode-switch', 'label')],
         [Input('value-input', 'value'),
-         Input('mode-switch', 'on')]
-         )
+         Input('mode-switch', 'on')],
+         prevent_initial_call = True)
 def set_value(value, mode):
     
     if mode:

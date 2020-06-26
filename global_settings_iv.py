@@ -24,6 +24,7 @@ def init():
     MEASUREMENT_ON = False
     MODE = 'CC'
     
+    
     CONFIGURATION = {
               'mode' : MODE,
               'rtime' : inf,

@@ -86,22 +86,20 @@ def iv_setup(value, mode = 'CC', rtime = np.inf, dt = 0.25,\
         with open(filename,'a') as f:
             f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('Step','Time','Current','Voltage', 'Absolute time', 'Temperature'))
             f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('i','s','A', 'V', 's','C'))
+    
     if gs.MEASUREMENT_ON:
-
         timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
         with open(filename,'a') as f:
             f.write('{}\n'.format(timestamp))               
 
     i = 0 # Step counter
-    
+
     if gs.MEASUREMENT_ON:
         if gs.MODE == 'CC':
             ky2400.mode_ifix_setcurr(value / 1000.0, curr_max=0.1, curr_min= 0.00)
         else:
             ky2400.mode_vfix_setvolt(value)
-
         ky2400.outpon()
-    else: ky2400.outpoff()
         
     while etime < rtime and gs.MEASUREMENT_ON:
         try:
@@ -162,5 +160,5 @@ def iv_setup(value, mode = 'CC', rtime = np.inf, dt = 0.25,\
             ky2400.outpoff()
             break
 
-    if not interrupt_measurement:
+    if interrupt_measurement:
         ky2400.outpoff()
