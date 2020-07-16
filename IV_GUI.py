@@ -35,7 +35,7 @@ calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-# Preparing the plots (2 independent plots, in this case)
+# Preparing the plot
 plot_data = [go.Scatter(x=[], y=[], name = 'voltage', mode = 'lines+markers')]
 
 plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
