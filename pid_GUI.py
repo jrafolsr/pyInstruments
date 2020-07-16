@@ -16,10 +16,26 @@ import pyInstruments.global_settings_pid as gs # Globals
 from dash.dependencies import Input, Output, State
 import pyInstruments.pid_controls as pyPID
 from collections import deque
+from visa import ResourceManager
+
+
 
 global N_CLICK_PREVIOUS, MAX_LENGTH
 N_CLICK_PREVIOUS = 0
 MAX_LENGTH = 500
+
+
+# Listing the available resources
+lresources = ResourceManager().list_resources()
+
+# Preparing the plot
+plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
+                   legend =  {'x': 0, 'y': 1, 'xanchor': 'left'},\
+                   xaxis = dict(title =  "Timestamp", font = dict(size = 24)),\
+                   yaxis = dict( title =  "Temperature (°C)", font = dict(size = 24))
+                   )
+
+
 
 gs.init()
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
@@ -39,22 +55,35 @@ app.layout = html.Div(children =  [
         html.H4('Temperature stage PID setup', style = {'width': '40%', 'display': 'inline-block','vertical-align':'middle'})
         ]),
         html.Div(id='live-update-text', className = 'row', children  = [
-        html.Div([        
-        dcc.Graph(id='live-update-graph', 
-              figure= {
-                'layout' : {'margin' : {'l': 60, 'r': 60, 'b': 60, 't': 20},
-                            'legend' :  {'x': 0, 'y': 1, 'xanchor': 'left'},
-                            'xaxis' : {'title' : {'text' : 'Timestamp', 'font' : {'size' : 24}}},
-                            'yaxis' : {'title' : {'text' : 'Temperature (°C)', 'font' : {'size' : 24}}}
-                            }
-                },),
-        dcc.Interval(
-            id='interval-component',
-            interval = 1000, # in milliseconds
-            n_intervals = 0,
-            disabled = True
-        )],
-        style = {'width' : '60%', 'display': 'inline-block'}        
+            html.Div([        
+                dcc.Graph(id='live-update-graph', 
+                      figure= {"layout": plot_layout
+                                  }
+                      ),
+                dcc.Interval(
+                    id='interval-component',
+                    interval = 1000, # in milliseconds
+                    n_intervals = 0,
+                    disabled = True
+                    ),
+                html.Span('Multimeter address'),
+                dcc.Dropdown(id  = 'dropdown-multimeter',
+                    options = [{'label' : name, 'value': name} for name in lresources],
+                    value = 'GPIB0::23::INSTR' if 'GPIB0::23::INSTR' in lresources else None,
+                    placeholder = 'Multimeter address',
+                    style = {'width' : '200'},
+                    searchable = False
+                ),
+                html.Span('Power source address:'),
+                dcc.Dropdown(id  = 'dropdown-sourcemeter',
+                    options = [{'label' : name, 'value': name} for name in lresources],
+                    value ='GPIB0::5::INSTR' if 'GPIB0::5::INSTR' in lresources else None,
+                    placeholder = 'Sourcemeter address',
+                    style = {'width' : '200'},
+                    searchable = False
+                ) 
+            ],
+            style = {'width' : '60%', 'display': 'inline-block'}        
         ),
         
         html.Div(id = 'buttons-text', children = [
@@ -114,7 +143,7 @@ app.layout = html.Div(children =  [
           ])
         ],
         style = {'width' : '40%', 'height' : '100%', 'display': 'inline-block', 'vertical-align':'top'})
-       ]),           
+       ]),        
    ]) 
     
     
@@ -215,15 +244,20 @@ def write_setpoint(value):
                Output('my-daq-startbutton', 'n_clicks'),
                Output('cooling-switch', 'disabled')],
             [Input('power-button', 'on')],
-             [State('set-setpoint', 'value'),
-              State('my-daq-startbutton', 'n_clicks')])
-def start_instrument(on, setpoint, N):
+             [State('my-daq-startbutton', 'n_clicks'),
+              State('set-setpoint', 'value'),
+              State('cooling-switch', 'on'),
+              State('max-power', 'value'),
+              State('dropdown-multimeter', 'value'),
+               State('dropdown-sourcemeter', 'value')])
+def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr):
+    """The cooling flag needs to be denied, as the pid_init ask if HEATING, just the opposite"""
     if on is None:
         return ['Power off'], True, 0, False
     try:
         if on:
             pyPID.pid_on()
-            pyPID.pid_init(setpoint)
+            pyPID.pid_init(setpoint, not cooling, max_power, mult_addr, source_addr)
             label = 'Power ON'
             return [label], False, N, True
         else:
@@ -234,19 +268,13 @@ def start_instrument(on, setpoint, N):
     except Exception as e:
         print('ERROR: An error occured in starting the instrument')
         print(e)
-        return ['ERROR'], True, True
+        return ['ERROR'], True, 0, False
     
 @app.callback([Output('max-power', 'label')],
         [Input('max-power', 'value')])
 def max_power(value):
     gs.MAX_A = value
     label = 'Max. power output'
-    return [label]
-@app.callback([Output('cooling-switch', 'label')],
-        [Input('cooling-switch', 'on')])
-def heating_mode(on):
-    gs.MODE_HEATING = not on
-    label = 'Cooling?'
     return [label]
 
 if __name__ == '__main__':

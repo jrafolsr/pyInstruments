@@ -27,17 +27,19 @@ def calc_temperature(R, cal = {'R0' : 100.0, 'alpha' : 3.9083e-3, 'beta' : -5.77
 fTreal = r'.\temp\temp.dat'
 lock = Lock()
 #%%
-def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00):
+def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
+                   multimeter_addr  = 'GPIB0::23::INSTR',\
+                   sourcemeter_addr = 'GPIB0::5::INSTR'):
+    
     gs.SETPOINT_T = setpoint
-    gs.MODE_HEATING = heating
     gs.MAX_A = max_poutput
     # Creating the object class ktly20XX
-    mult = keysight34461A('GPIB0::23::INSTR')
-    supply  = agilentE3631A('GPIB0::5::INSTR')
+    mult = keysight34461A(multimeter_addr)
+    supply  = agilentE3631A(sourcemeter_addr)
     # Configuration of the sourcemeter and measurement devices
     mult.config_ohms(rang = 1000, nplc = 1, count = 5)
     
-    if gs.MODE_HEATING:
+    if heating:
         terminal = 'P25V'
         pmin = 0.0
         pmax = gs.MAX_A
@@ -71,7 +73,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00):
                 if not supply.outpstate():
                     print('Turning on the Power supply')
                     supply.outpon()
-                if gs.MODE_HEATING:
+                if heating:
                     pid.ulimit = gs.MAX_A
                 else:
                     pid.llimit = gs.MAX_A*(-1.0)
@@ -79,7 +81,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00):
                 T  = calc_temperature(mult.read()).mean(axis = 0)
                     
                 # Update the action value to steadily reach the setpoint based on how close is from the final value                       
-                if gs.MODE_HEATING:
+                if heating:
                     if isclose(T,gs.SETPOINT_T,0,0.5) or (T >= gs.SETPOINT_T + 0.5):
                         action = pid.update(T, gs.SETPOINT_T)
                     else:
@@ -142,11 +144,12 @@ def pid_setpoint(value):
     gs.SETPOINT_T = value 
 def get_currentT():
     return gs.CURRENT_T 
-def pid_init(temperature):
+def pid_init(setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr):
     pid_on()
     pid_stop()
-    gs.SETPOINT_T = temperature
-    thread = Thread(target = pid_controller, args=(gs.SETPOINT_T,gs.MODE_HEATING, gs.MAX_A,))
+    gs.SETPOINT_T = setpoint
+    args = (setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr)
+    thread = Thread(target = pid_controller, args = args)
     thread.daemon = True
     thread.start()
     
