@@ -46,6 +46,8 @@ plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
         
 #%%
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = 'IV logger'
+
 app.layout = html.Div(children =  [
 
         html.Div(className = 'row', children = [
