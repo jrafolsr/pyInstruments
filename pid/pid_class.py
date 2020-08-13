@@ -6,7 +6,7 @@ Created on Fri Nov 29 16:42:41 2019
 """
 from time import time
 
-class pid(object):
+class Pid(object):
     
     def __init__(self, Kp, Ki, Kd, ulimit = 0.020, llimit = 3.5e-5):
         """Initalize all values for the PID"""

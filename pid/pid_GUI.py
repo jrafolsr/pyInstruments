@@ -12,9 +12,9 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
-import pyInstruments.global_settings_pid as gs # Globals
+import global_settings_pid as gs # Globals
 from dash.dependencies import Input, Output, State
-import pyInstruments.pid_controls as pyPID
+import pid_controls as pyPID
 from collections import deque
 from visa import ResourceManager
 
@@ -43,6 +43,7 @@ calc_status = lambda x:  bool(abs(int((1j**x).real)))
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = 'PID'
 app.layout = html.Div(children =  [
 
         html.Div(className = 'row', children = [

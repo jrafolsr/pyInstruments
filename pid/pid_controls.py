@@ -7,8 +7,8 @@ Created on Thu Oct  4 11:24:33 2018
 #%%
 from time import sleep, time
 from pyInstruments.instruments import keysight34461A, agilentE3631A # This the module I created
-import pyInstruments.pid as pid_object
-import pyInstruments.global_settings_pid as gs
+from pyInstruments.pid import Pid
+import global_settings_pid as gs
 
 import datetime
 from numpy import sqrt, isclose
@@ -24,7 +24,7 @@ def calc_temperature(R, cal = {'R0' : 100.0, 'alpha' : 3.9083e-3, 'beta' : -5.77
 
 # Creates a lock class to block the access to the temperature writing
 # Files to store and read the setpoint and Treal
-fTreal = r'.\temp\temp.dat'
+fTreal = r'..\temp\temp.dat'
 lock = Lock()
 #%%
 def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
@@ -56,7 +56,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
     Ki = 0.05
     Kd = 0.0
 
-    pid = pid_object(Kp,Ki,Kd, ulimit = pmax, llimit = pmin)
+    pid = Pid(Kp,Ki,Kd, ulimit = pmax, llimit = pmin)
     pid.clear() # Not really necessary now, but it is a good practice. It resets all the values of the pid.
 
     # Read and write the current temperature
