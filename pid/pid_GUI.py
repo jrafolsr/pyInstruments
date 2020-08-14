@@ -4,21 +4,18 @@ Created on Fri Oct 11 09:47:49 2019
 
 @author: JOANRR
 """
-import sys
-sys.path.append(r'C:\Users\OPEGLAB\Documents\lab-instrumentation')
-
 import datetime
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
-import global_settings_pid as gs # Globals
 from dash.dependencies import Input, Output, State
+ # Globals
+from pyInstruments.pid import global_settings_pid as gs
 import pid_controls as pyPID
+
 from collections import deque
 from visa import ResourceManager
-
-
 
 global N_CLICK_PREVIOUS, MAX_LENGTH
 N_CLICK_PREVIOUS = 0
@@ -42,7 +39,7 @@ calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
 app.title = 'PID'
 app.layout = html.Div(children =  [
 

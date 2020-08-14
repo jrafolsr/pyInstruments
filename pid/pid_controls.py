@@ -8,14 +8,11 @@ Created on Thu Oct  4 11:24:33 2018
 from time import sleep, time
 from pyInstruments.instruments import keysight34461A, agilentE3631A # This the module I created
 from pyInstruments.pid import Pid
-import global_settings_pid as gs
-
+from pyInstruments.pid import global_settings_pid as gs
 import datetime
 from numpy import sqrt, isclose
 from threading  import Thread, Lock
 today = datetime.date.today().strftime("%d%m%Y")
-
-
 
 
 def calc_temperature(R, cal = {'R0' : 100.0, 'alpha' : 3.9083e-3, 'beta' : -5.7750e-7}):
@@ -127,10 +124,17 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
 def pid_on():
     gs.PID_STATUS = True
 def pid_off():
+    with lock:
+        with open(fTreal,'w') as f:
+            f.write(f'nan')
+    
     gs.PID_STATUS = False
 def pid_start():
     gs.PID_ON = True
 def pid_stop():
+    with lock:
+        with open(fTreal,'w') as f:
+            f.write(f'nan')
     gs.PID_ON = False
 def pid_setpoint(value):
     llim = -20
