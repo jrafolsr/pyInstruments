@@ -12,10 +12,10 @@ Created on Wed Jun 24 10:37:57 2020
 
 import numpy as np
 from time import sleep, time
-from .instruments import keithley24XX # This the module I created
+from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
 import os
-from . import global_settings_iv as gs
+from pyInstruments.ivlogger import global_settings_iv as gs
 
 def dt_calc(etime):
     """Returns an interval of time that increased as the ellapsed time etime increases"""
@@ -114,7 +114,7 @@ def iv_setup(value, mode = 'CC', rtime = np.inf, dt = 0.25,\
                 itime =  ttime
                 start = False
 
-            with open(r'.\temp\temp.dat') as f1:
+            with open(r'..\temp\temp.dat') as f1:
                 temperature = float(f1.read())
                 
             with open(filename,'a') as f:

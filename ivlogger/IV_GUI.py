@@ -22,8 +22,8 @@ from time import sleep
 global N_CLICK_PREVIOUS
 N_CLICK_PREVIOUS = 0
 # Local libraries
-from pyInstruments.configurations import iv_setup
-from pyInstruments import global_settings_iv as gs
+from pyInstruments.ivlogger import iv_setup
+from pyInstruments.ivlogger import global_settings_iv as gs
 from datetime import datetime
 
 timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
