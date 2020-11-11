@@ -12,7 +12,7 @@ class agilentE3631A(sourcemeter):
     def __init__(self, resource):
         sourcemeter.__init__(self,resource)
         #print(self.identify[0:22])
-        if ('HEWLETT-PACKARD,E3631A' in self.identify):
+        if ('E3631A' in self.identify):
             print('You have connected succesfully with a %s' % self.identify)
         else:
             raise  Exception('Not able to connect with a Agilent E3631A sourcemeter, instead : \n {}'.format(self.identify))
