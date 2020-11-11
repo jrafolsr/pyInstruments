@@ -26,7 +26,7 @@ from pyInstruments.ivlogger import iv_setup
 from pyInstruments.ivlogger import global_settings_iv as gs
 from datetime import datetime
 
-timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
+
   
 PORT = 8053 # Where to open the app
 
@@ -316,6 +316,7 @@ def set_folder(value):
 @app.callback([Output('filename-html', 'children')],
         [Input('filename-input', 'value')])
 def set_filename(value):
+    timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
     fname = timestamp + '_' + value
     gs.set_configuration('fname', fname)
     children = f'Filename:  {fname}'
