@@ -41,11 +41,11 @@ class agilentE3631A(sourcemeter):
         """Reads the voltage/current value, it could but more general, but it isn't right now
         it returns a list. Args:
         value = 'volt': reads the voltage or current (as 'curr')"""
-        if value is 'volt':
+        if value == 'volt':
             self.reading =  self.inst.query_ascii_values('MEAS:VOLT? ' + self.output, container=array)
-        elif value is 'curr':
+        elif value == 'curr':
             self.reading =  self.inst.query_ascii_values('MEAS:CURR? ' + self.output, container=array)
         else:
-            raise(Error('Specified value not known'))
+            raise Exception('Specified value not known')
         return self.reading[0]
     
