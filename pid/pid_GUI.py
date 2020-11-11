@@ -63,82 +63,89 @@ app.layout = html.Div(children =  [
                     interval = 1000, # in milliseconds
                     n_intervals = 0,
                     disabled = True
-                    ),
-                html.Span('Multimeter address'),
-                dcc.Dropdown(id  = 'dropdown-multimeter',
-                    options = [{'label' : name, 'value': name} for name in lresources],
-                    value = 'GPIB0::23::INSTR' if 'GPIB0::23::INSTR' in lresources else None,
-                    placeholder = 'Multimeter address',
-                    style = {'width' : '200'},
-                    searchable = False
-                ),
-                html.Span('Power source address:'),
-                dcc.Dropdown(id  = 'dropdown-sourcemeter',
-                    options = [{'label' : name, 'value': name} for name in lresources],
-                    value ='GPIB0::5::INSTR' if 'GPIB0::5::INSTR' in lresources else None,
-                    placeholder = 'Sourcemeter address',
-                    style = {'width' : '200'},
-                    searchable = False
-                ) 
-            ],
+                    )
+                ],
             style = {'width' : '60%', 'display': 'inline-block'}        
         ),
         
         html.Div(id = 'buttons-text', children = [
            html.Div(children = [
-           daq.PowerButton(
-              id='power-button',
-              on = None,
-              color =  "#FF5E5E",
-              style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
-            ), 
-           daq.StopButton(id='my-daq-startbutton',
-              buttonText = 'Start',
-              n_clicks = 0,
-              style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
-              ),
-           daq.StopButton(id='my-daq-clearbutton',
-             n_clicks = 0,
-             buttonText = 'Clear',
-             style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
-             )
-           ]),
+               daq.PowerButton(
+                  id='power-button',
+                  on = None,
+                  color =  "#FF5E5E",
+                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
+                ), 
+               daq.StopButton(id='my-daq-startbutton',
+                  buttonText = 'Start',
+                  n_clicks = 0,
+                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
+                  ),
+               daq.StopButton(id='my-daq-clearbutton',
+                 n_clicks = 0,
+                 buttonText = 'Clear',
+                 style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
+                 )
+           ],\
+            style = {'padding-top' : '10px', 'padding-bottom' : '10px'}
+            ),
            html.Div([
-           daq.LEDDisplay(
-             id = 'my-curent-T',
-             label = "Current temperature (°C)",
-              labelPosition = 'bottom',
-             value = f'{0.00:05.2f}',
-             color= "#FF5E5E",
-             style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
-             ),
-           daq.Knob(
-               id='set-setpoint',
-               min = 0,
-               max = 100,
-               value = 20.00,
-               labelPosition = 'bottom',
-               color={"gradient":True,"ranges":{"blue":[0,33],"yellow":[33,66],"red":[66,100]}},
-               style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
-           )
-           ]),
+               daq.LEDDisplay(
+                 id = 'my-curent-T',
+                 label = "Current temperature (°C)",
+                 labelPosition = 'top',
+                 value = f'{0.00:05.2f}',
+                 color= "#FF5E5E",
+                 style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}
+                 ),
+               daq.NumericInput(
+                   id='set-setpoint',
+                   min = 0,
+                   max = 100,
+                   value = 20.00,
+                   label = 'Setpoint temperature (°C)',
+                   labelPosition = 'top',
+    #               color={"gradient":True,"ranges":{"blue":[0,33],"yellow":[33,66],"red":[66,100]}},
+                   style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}
+               )
+           ], style = {'padding-top' : '10px', 'padding-bottom' : '10px'}),
           html.Div(id  = 'extra-parameters', className = 'row', children = [
              daq.BooleanSwitch(
                   id='cooling-switch',
                   label = 'Cooling?',
                   on = False,
                   disabled = True,
-                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
+                  style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
                 ),
             daq.NumericInput(
                 id='max-power',
-                label = 'Max. power output',
+                label = 'Max. action output (V)',
                 min = 0.0,
                 max = 21.00,
                 value = 5.00,
-                style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
+                style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}
             )
-          ])
+          ],
+            style = {'padding-top' : '10px', 'padding-bottom' : '10px'}),
+       html.Div([
+            html.Span('Multimeter address'),
+            dcc.Dropdown(id  = 'dropdown-multimeter',
+                options = [{'label' : name, 'value': name} for name in lresources],
+                value = 'GPIB0::23::INSTR' if 'GPIB0::23::INSTR' in lresources else None,
+                placeholder = 'Multimeter address',
+                style = {'width' : '200'},
+                searchable = False
+            ),
+            html.Span('Power source address:'),
+            dcc.Dropdown(id  = 'dropdown-sourcemeter',
+                options = [{'label' : name, 'value': name} for name in lresources],
+                value ='GPIB0::5::INSTR' if 'GPIB0::5::INSTR' in lresources else None,
+                placeholder = 'Sourcemeter address',
+                style = {'width' : '200'},
+                searchable = False
+            )],
+             style = {'padding-top' : '10px', 'padding-bottom' : '10px', 'width': '80%'})           
+
         ],
         style = {'width' : '40%', 'height' : '100%', 'display': 'inline-block', 'vertical-align':'top'})
        ]),        
