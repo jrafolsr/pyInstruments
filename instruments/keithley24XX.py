@@ -5,7 +5,8 @@ Created on Fri Nov 29 16:45:15 2019
 @author: JOANRR
 """
 from ..resources import sourcemeter
-from numpy import array
+from numpy import array, linspace
+
 
 class keithley24XX(sourcemeter):
     def __init__(self, resource, termination = '\r'):
@@ -36,6 +37,7 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SOUR:CLE:AUTO ON")     # Enable source auto output-off.
         #inst.write(":SENS:VOLT:PROT 10")    # Set 10V compliance limit.
         self.inst.write(":TRIG:COUN {:d}".format(n_curr))         # Set to perform one measurement.
+        
     def mode_ifix_configure(self,term = 'FRONT', fw = True, cmpl = 21.0, aver = True,\
                             Ncount = 10, beeper = True, nplc = 1, sens = True,\
                             curr_range = None):
@@ -100,10 +102,12 @@ class keithley24XX(sourcemeter):
     def read(self):
         """ Sends the query read, and returns an array, depending on the type of measurement implemented"""
         return self.inst.query_ascii_values('READ?', container=array)
+    
     def init(self):
    #inst.write(":TRIG:DEL %.6f" % (trigger_del/1000.0))
         self.inst.write("INIT")
-    def mode_vfix_configure(self,term = 'FRONT', fw = False, cmpl = 0.050, beeper = True, aver = True,\
+        
+    def mode_vfix_configure(self,term = 'FRONT', fw = False, cmpl = 0.05, beeper = True, aver = True,\
                             Ncount = 10, nplc = 1, sens = True,\
                             volt_range = None):
         """Configures the 2400 to deliver a fix voltage and that's it for the moment" 
@@ -139,16 +143,126 @@ class keithley24XX(sourcemeter):
     def mode_vfix_setvolt(self,volt):
         """ Sends the order to the sourcemeter to set the voltage 'volt' in V."""
         self.inst.write(":SOUR:VOLT %.6f" % volt)
+        
     def outpoff(self):
         self.inst.write(":OUTP OFF")
+        
     def outpon(self):
         self.inst.write(":OUTP ON")
+        
     def outpstate(self):
         """Checks the output state"""
         return bool(self.inst.query_ascii_values(":OUTPut?")[0])
+    
     def close(self):
         self.inst.close()
+        
     def check_volt_compliance(self):
         return bool(self.inst.query_ascii_values(':VOLTage:PROTection:TRIPped?')[0])
     def check_curr_compliance(self):
         return bool(self.inst.query_ascii_values(':CURRent:PROTection:TRIPped?')[0])
+    
+    def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN'):
+        """
+        Configures the Keithley to perform a voltage sweep
+    
+        Parameters:
+        ----------
+        start: int ot float
+            Initial voltage in V in case of a stair-like sweep.
+        stop: int ot float
+            Final voltage in V in case of a stair-like sweep.           
+        step: int ot float
+            Voltage step in V in case of a stair-like sweep.
+        mode: 'step' or 'list'
+            Sweep mode. If 'step' the values start, stop, step and spacing are used to configure the sweep-list values. If 'list' the list passed to the 'sweep_list' argument will be used. The default is 'step'.
+        term: 'FRONT' ot 'REAR'
+            The output terminal to use. the defualt is 'FRONT'
+        cmpl: itn or float
+            The compliance value in A.
+        nplc: int or float 0.01 <= nplc <=100
+            Numebr of pulse lught cycles to average the data. The default is 1.
+       ranging: 'AUTO' or float
+           Set the current sensign range to a fix one in the case a value is passed. The default is None and the sourcemeter will adjust the range according to the measured values.
+       spacing:'LIN'  or 'LOG'
+          Spacinf type of the values in the case of a stair-like sweep.
+       delay: int or float
+           Specify delay in seconds between the settled source value and the measurement reading.        
+    """ 
+        print("INFO: Keithley configured in sweep mode")
+        
+        self.inst.write("*RST")                  # Reset instrument to default parameters.
+        # self.inst.write("*CLS")
+        # self.inst.write("*OPC")
+        # self.inst.write("*SRE 1")
+        self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
+        self.inst.write(":SYST:BEEP:STAT 1") # Turn on/off the beeper
+        self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear      
+        self.inst.write(":SOUR:CLE:AUTO ON")     # Enable source auto output-off.
+        self.inst.write(":SOUR:FUNC VOLT")
+        
+        Npoints = int((stop - start) / step) + 1
+        if mode == 'step':
+            self.inst.write(":SOURce:VOLTage:MODE SWEep")
+            self.inst.write(":SOURce:SwEep:SPACing %s" % spacing)
+            self.inst.write(":SOURce:VOLTage:STARt %.6f" % start)
+            self.inst.write(":SOURce:VOLTage:STOP %.6f" % stop)
+            self.inst.write(":SOURce:VOLTage:STEP %.6f" %  step)
+            self.inst.write(":TRIG:COUN %d" % Npoints)         # Set to perform N measurements.
+        elif mode == 'list':
+            
+            self.inst.write(":SOURce:VOLTage:MODE LIST")
+            Npoints = len(sweep_list)
+            t = ''
+            for value in sweep_list:
+                t += f'{value:.4f},'
+            t = t[0:-1]
+            
+            self.inst.write(":SOURce:LIST:VOLTage %s" % t)
+            self.inst.write(":TRIG:COUN %d" % Npoints)  
+        if (delay == 'AUTO') | (delay == 'auto'):
+            self.inst.write(":SOURce:DELay:AUTO ON")
+            self.sweep_total_time = (0.005  + nplc /50 + 0.05) * Npoints
+        else:
+            self.inst.write(":SOURce:DELay %.6f" % delay)
+            self.sweep_total_time = (delay  + nplc /50 + 0.05) * Npoints
+            
+        self.inst.write(":SOURce:SwEep:RANging BEST")
+        self.inst.write(":SENSe:FUNC 'CURR:DC'")
+        self.inst.write(":SENSe:CURR:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
+        self.inst.write(":SENSe:CURR:PROT:LEV %.3g" % cmpl)
+        
+        if (ranging != 'AUTO') & (ranging != 'auto'):
+            if ranging >= cmpl:
+                print('INFO: The compliance is increased to match the SENSe range')
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3g" % ranging)   
+            self.inst.write(":SENSe:CURRent:RANGe %.6e" % ranging)
+        
+        
+        
+    def sweep_read(self, delay = None):
+        """
+        Launches the configured sweep using the method mode_Isweep_config.
+    
+        Parameters:
+        ----------
+        delay: int or float
+            Delay time in secodn between the write and read of the query, the default is taken from the estimated time to perform the sweep, stored in the property self.sweep_total_time.
+            
+        Returns:
+        --------
+        data: np.array
+            Array contain the output from the sourcemeter, N x 5, where N is the number of points taken. The first two columns are the voltage and current, respectively.
+        
+        """
+        self.outpon()
+        
+        if delay == None:
+            delay = self.sweep_total_time
+        data = self.inst.query_ascii_values("READ?", delay = delay, container = array)
+        # Reshaping the data to a Npoints x columns array
+        data = data.reshape((data.shape[0] // 5, 5))
+        
+        return data
+        
+        
