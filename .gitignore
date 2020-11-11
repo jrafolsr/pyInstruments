@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 instruments/__pycache__/
 *.txt
-temp/*.dat
+temp/temp.dat
