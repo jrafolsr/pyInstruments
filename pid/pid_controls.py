@@ -6,7 +6,7 @@ Created on Thu Oct  4 11:24:33 2018
 """
 #%%
 from time import sleep, time
-from pyInstruments.instruments import keysight34461A, agilentE3631A # This the module I created
+from pyInstruments.instruments import keysight34461A, agilentE36XXA # This the module I created
 from pyInstruments.pid import Pid
 from pyInstruments.pid import global_settings_pid as gs
 import datetime
@@ -32,16 +32,17 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
     gs.MAX_A = max_poutput
     # Creating the object class ktly20XX
     mult = keysight34461A(multimeter_addr)
-    supply  = agilentE3631A(sourcemeter_addr)
+    supply  = agilentE36XXA(sourcemeter_addr)
     # Configuration of the sourcemeter and measurement devices
     mult.config_ohms(rang = 1000, nplc = 1, count = 5)
     
+    terminal = 'default'
     if heating:
-        terminal = 'P25V'
+#    terminal = 'P25V'
         pmin = 0.0
         pmax = gs.MAX_A
     else:
-        terminal = 'N25V'
+#        terminal = 'N25V'
         pmin = gs.MAX_A*(-1.0)
         pmax = 0.0
     
@@ -88,7 +89,8 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
                         action = pid.update(T, gs.SETPOINT_T)
                     else:
                         action = pid.update(T, pid.setpoint - 20/60.0*pid.dt)
-                
+
+                action = abs(action)
                 supply.set_volt(action)    
                 
                 gs.CURRENT_T = T
