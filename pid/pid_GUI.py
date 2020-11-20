@@ -127,6 +127,17 @@ app.layout = html.Div(children =  [
             )
           ],
             style = {'padding-top' : '10px', 'padding-bottom' : '10px'}),
+      html.Div([
+          dcc.RadioItems(
+             id = 'rtd-type',
+            options=[
+                {'label': 'Pt100', 'value': 100},
+                {'label': 'Pt1000', 'value': 1000}
+            ],
+            value = 100
+        ) 
+              ]),
+          
        html.Div([
             html.Span('Multimeter address'),
             dcc.Dropdown(id  = 'dropdown-multimeter',
@@ -254,15 +265,16 @@ def write_setpoint(value):
               State('cooling-switch', 'on'),
               State('max-power', 'value'),
               State('dropdown-multimeter', 'value'),
-               State('dropdown-sourcemeter', 'value')])
-def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr):
+               State('dropdown-sourcemeter', 'value'),
+               State('rtd-type', 'value')])
+def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr, R0):
     """The cooling flag needs to be denied, as the pid_init ask if HEATING, just the opposite"""
     if on is None:
         return ['Power off'], True, 0, False
     try:
         if on:
             pyPID.pid_on()
-            pyPID.pid_init(setpoint, not cooling, max_power, mult_addr, source_addr)
+            pyPID.pid_init(setpoint, not cooling, max_power, mult_addr, source_addr, R0)
             label = 'Power ON'
             return [label], False, N, True
         else:

@@ -15,9 +15,10 @@ from threading  import Thread, Lock
 today = datetime.date.today().strftime("%d%m%Y")
 
 
-def calc_temperature(R, cal = {'R0' : 100.0, 'alpha' : 3.9083e-3, 'beta' : -5.7750e-7}):
+def calc_temperature(R, R0 = 100.0, alpha = 3.9083e-3, beta =  -5.7750e-7):
     """Returns the temperature in °C according to the Standard Class B Pt100/1000, default is Pt100"""
-    return (-cal['alpha'] + sqrt(cal['alpha']**2-4*cal['beta']*(1-R/cal['R0'])))/2/cal['beta']
+
+    return (-alpha + sqrt(alpha**2-4 * beta * (1-R / R0))) / 2 / beta
 
 # Creates a lock class to block the access to the temperature writing
 # Files to store and read the setpoint and Treal
@@ -26,7 +27,8 @@ lock = Lock()
 #%%
 def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
                    multimeter_addr  = 'GPIB0::23::INSTR',\
-                   sourcemeter_addr = 'GPIB0::5::INSTR'):
+                   sourcemeter_addr = 'GPIB0::5::INSTR',\
+                   R0 = 100):
     
     gs.SETPOINT_T = setpoint
     gs.MAX_A = max_poutput
@@ -34,7 +36,10 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
     mult = keysight34461A(multimeter_addr)
     supply  = agilentE36XXA(sourcemeter_addr)
     # Configuration of the sourcemeter and measurement devices
-    mult.config_ohms(rang = 1000, nplc = 1, count = 5)
+    if R0 == 100:
+        mult.config_ohms(rang = 1000, nplc = 1, count = 5)      
+    else:
+        mult.config_ohms(rang = 10000, nplc = 1, count = 5)   
     
     terminal = 'default'
     if heating:
@@ -58,7 +63,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
     pid.clear() # Not really necessary now, but it is a good practice. It resets all the values of the pid.
 
     # Read and write the current temperature
-    gs.CURRENT_T = calc_temperature(mult.read()).mean(axis = 0)
+    gs.CURRENT_T = calc_temperature(mult.read(), R0).mean(axis = 0)
     pid.set_setpoint(gs.CURRENT_T) # initialize the setpoint to a the current temperature
     
     sleeping_time = 0.5
@@ -76,7 +81,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
                 else:
                     pid.llimit = gs.MAX_A*(-1.0)
                 
-                T  = calc_temperature(mult.read()).mean(axis = 0)
+                T  = calc_temperature(mult.read(), R0).mean(axis = 0)
                     
                 # Update the action value to steadily reach the setpoint based on how close is from the final value                       
                 if heating:
@@ -128,7 +133,7 @@ def pid_on():
 def pid_off():
     with lock:
         with open(fTreal,'w') as f:
-            f.write(f'nan')
+            f.write('nan')
     
     gs.PID_STATUS = False
 def pid_start():
@@ -136,7 +141,7 @@ def pid_start():
 def pid_stop():
     with lock:
         with open(fTreal,'w') as f:
-            f.write(f'nan')
+            f.write('nan')
     gs.PID_ON = False
 def pid_setpoint(value):
     llim = -20
@@ -150,14 +155,14 @@ def pid_setpoint(value):
     gs.SETPOINT_T = value 
 def get_currentT():
     return gs.CURRENT_T 
-def pid_init(setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr):
+def pid_init(setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr, R0 = 100):
     pid_on()
     pid_stop()
     gs.SETPOINT_T = setpoint
-    args = (setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr)
+    args = (setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr, R0)
     thread = Thread(target = pid_controller, args = args)
     thread.daemon = True
     thread.start()
     
-if __name__ is '__main__':
+if __name__ == '__main__':
     print('Functions for the pid loaded, please start it using pid_init()\n')
