@@ -98,16 +98,18 @@ app.layout = html.Div(children =  [
                  color= "#FF5E5E",
                  style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}
                  ),
-               daq.NumericInput(
-                   id='set-setpoint',
-                   min = 0,
-                   max = 100,
-                   value = 20.00,
-                   label = 'Setpoint temperature (°C)',
-                   labelPosition = 'top',
-    #               color={"gradient":True,"ranges":{"blue":[0,33],"yellow":[33,66],"red":[66,100]}},
-                   style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}
-               )
+               html.Div( [
+                       html.P(id = 'label-setpoint', children = 'Temperature setpoint is 20.00 °C'),
+                       dcc.Input(
+                           id='set-setpoint',
+                           type = 'number',
+                           min = 0,
+                           max = 100,
+                           value = 20.00,
+                           debounce = True,
+                           size = '25px'
+                       )],
+                       style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'top'}),
            ], style = {'padding-top' : '10px', 'padding-bottom' : '10px'}),
           html.Div(id  = 'extra-parameters', className = 'row', children = [
              daq.BooleanSwitch(
@@ -248,7 +250,7 @@ def change_status_on(N, on):
         print(e)
         return label, color[1], True
 
-@app.callback([Output('set-setpoint', 'label')],
+@app.callback([Output('label-setpoint', 'children')],
         [Input('set-setpoint', 'value')])
 def write_setpoint(value):
     pyPID.pid_setpoint(value)
