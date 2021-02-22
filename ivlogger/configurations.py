@@ -114,7 +114,7 @@ def iv_setup(value, mode = 'CC', rtime = np.inf, dt = 0.25,\
                 itime =  ttime
                 start = False
 
-            with open(r'..\temp\temp.dat') as f1:
+            with open('../temp/temp.dat') as f1:
                 temperature = float(f1.read())
                 
             with open(filename,'a') as f:
