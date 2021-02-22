@@ -4,7 +4,7 @@ Created on Fri Nov 29 16:43:24 2019
 
 @author: JOANRR
 """
-import visa
+import pyvisa as visa
 
 class sourcemeter(object):
     def __init__(self, resource, termination = None):
