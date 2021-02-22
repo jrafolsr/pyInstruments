@@ -7,7 +7,7 @@ Created on Fri Oct 11 09:47:49 2019
 #%%
 # Necessary as long as I'm working in folder nor added to the path by default
 import sys
-sys.path.append(r'C:\Users\OPEGLAB\Documents\lab-instrumentation')
+#sys.path.append(r'C:\Users\OPEGLAB\Documents\lab-instrumentation')
 
 import dash
 import dash_core_components as dcc
@@ -141,7 +141,7 @@ app.layout = html.Div(children =  [
             dcc.Input(id="folder-input",
                       type="text",
                       placeholder="Folder",
-                      value = r'C:\Users\OPEGLAB\Documents\data\iv_logger',
+                      value = '/home/pi/Documents/data',
                       size = '100%',
                       style =  {'width' : '100%'}),
             html.Div(id="filename-html"),
@@ -158,7 +158,7 @@ app.layout = html.Div(children =  [
     html.Div(id = 'source-selection', children = ['Sourcemeter address']),
     dcc.Dropdown(id  = 'dropdown-menu',
         options= [{'label' : name, 'value': name} for name in ResourceManager().list_resources()],
-        value= 'GPIB0::25::INSTR',
+        value= 'GPIB0::24::INSTR',
         style = {'width' : '50%'},
         searchable = False
     ),
