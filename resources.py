@@ -13,15 +13,15 @@ class sourcemeter(object):
         self.rm = visa.ResourceManager()
         if resource in self.rm.list_resources(): # Checking if the resource is available
             self.inst = self.rm.open_resource(resource)
-            if self.inst.resource_info[0][3][:4] == 'ASRL':
+            if self.inst.resource_info[3][:4] == 'ASRL':
                 #This should be changed! gpib is also a instrument type
                 if termination is not None:
                     self.inst.read_termination = termination
                     self.inst.write_termination = termination
                 print('You have connected succesfully with an ASRL type resource')
-            elif self.inst.resource_info[0][3][:4] == 'GPIB':
+            elif self.inst.resource_info[3][:4] == 'GPIB':
                 print('You have connected succesfully with an GPIB type resource')
-            elif self.inst.resource_info[0][3][:4] == 'USB0':
+            elif self.inst.resource_info[3][:4] == 'USB0':
                 print('You have connected succesfully with an USB0 type resource')
                 pass
             else:
