@@ -328,7 +328,7 @@ def set_filename(value):
 
 if __name__ == '__main__':
     try:
-        app.run_server(debug = True, port = PORT)
+        app.run_server(debug = True, port = PORT, dev_tools_hot_reload = False)
     except KeyboardInterrupt as e:
         print(e)
 
