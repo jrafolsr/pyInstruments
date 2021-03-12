@@ -4,7 +4,7 @@ Created on Fri Nov 29 16:43:24 2019
 
 @author: JOANRR
 """
-import visa
+import pyvisa as visa
 
 class sourcemeter(object):
     def __init__(self, resource, termination = None):
@@ -18,9 +18,11 @@ class sourcemeter(object):
                 if termination is not None:
                     self.inst.read_termination = termination
                     self.inst.write_termination = termination
-                print('You have succesfully connected with an ASRL class resource')
+                print('You have connected succesfully with an ASRL type resource')
             elif self.inst.resource_info[0][3][:4] == 'GPIB':
-                print('You have succesfully connected with an GPIB class resource')
+                print('You have connected succesfully with an GPIB type resource')
+            elif self.inst.resource_info[0][3][:4] == 'USB0':
+                print('You have connected succesfully with an USB0 type resource')
                 pass
             else:
                 raise Exception('Resource class not contemplated, check pyLab library')

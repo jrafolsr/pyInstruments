@@ -17,7 +17,7 @@ from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 from threading import Thread #, Timer
 #import webbrowser
-from visa import ResourceManager
+from pyvisa import ResourceManager
 from time import sleep
 global N_CLICK_PREVIOUS
 N_CLICK_PREVIOUS = 0
@@ -327,6 +327,9 @@ def set_filename(value):
 #	webbrowser.open_new("http://127.0.0.1:{}/".format(PORT))
 
 if __name__ == '__main__':
-#    Timer(1, open_browser, args = (PORT,)).start();
-    app.run_server(debug = True, port = PORT, dev_tools_hot_reload = False)
+    try:
+        app.run_server(debug = True, port = PORT)
+    except KeyboardInterrupt as e:
+        print(e)
+
     
