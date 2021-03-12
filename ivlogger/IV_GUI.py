@@ -141,7 +141,7 @@ app.layout = html.Div(children =  [
             dcc.Input(id="folder-input",
                       type="text",
                       placeholder="Folder",
-                      value = r'C:\Users\OPEGLAB\Documents\data\iv_logger',
+                      value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
                       size = '100%',
                       style =  {'width' : '100%'}),
             html.Div(id="filename-html"),
@@ -328,5 +328,5 @@ def set_filename(value):
 
 if __name__ == '__main__':
 #    Timer(1, open_browser, args = (PORT,)).start();
-    app.run_server(debug = True, port = PORT)
+    app.run_server(debug = True, port = PORT, dev_tools_hot_reload = False)
     
