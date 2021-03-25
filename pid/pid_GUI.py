@@ -297,5 +297,8 @@ def max_power(value):
     return [label]
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port = 8052)
+    try:
+        app.run_server(debug = True, port = 8052, use_reloader = False)
+    except KeyboardInterrupt as e:
+        print(e)
     
