@@ -25,6 +25,7 @@ def calc_temperature(R, R0 = 100.0, alpha = 3.9083e-3, beta =  -5.7750e-7):
 fTreal = r'..\temp\temp.dat'
 lock = Lock()
 #%%
+
 def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
                    multimeter_addr  = 'GPIB0::23::INSTR',\
                    sourcemeter_addr = 'GPIB0::5::INSTR',\
@@ -130,6 +131,7 @@ def pid_controller(setpoint = 20.0, heating = True, max_poutput = 12.00,\
 
 def pid_on():
     gs.PID_STATUS = True
+
 def pid_off():
     with lock:
         with open(fTreal,'w') as f:
@@ -138,11 +140,13 @@ def pid_off():
     gs.PID_STATUS = False
 def pid_start():
     gs.PID_ON = True
+
 def pid_stop():
     with lock:
         with open(fTreal,'w') as f:
             f.write('nan')
     gs.PID_ON = False
+
 def pid_setpoint(value):
     llim = -20
     hlim = 100
@@ -155,6 +159,7 @@ def pid_setpoint(value):
     gs.SETPOINT_T = value 
 def get_currentT():
     return gs.CURRENT_T 
+
 def pid_init(setpoint, heating, max_poutput, multimeter_addr, sourcemeter_addr, R0 = 100):
     pid_on()
     pid_stop()
