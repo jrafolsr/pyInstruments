@@ -1,4 +1,5 @@
 # pyInstruments
+[![MIT license](http://img.shields.io/badge/license-MIT-yellowgreen.svg)](http://opensource.org/licenses/MIT)
 
 Pyhton library to control several lab scientific equipment such as sourcemeters, multimeters or daqs. It makes use of [pyvisa](https://pyvisa.readthedocs.io/en/latest/) allowing the creation of your own lab instruments(sweep current-voltage programs, data loggers, controllers, etc).
 
