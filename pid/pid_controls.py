@@ -22,7 +22,7 @@ def calc_temperature(R, R0 = 100.0, alpha = 3.9083e-3, beta =  -5.7750e-7):
 
 #%%
 
-class PidTask(object):
+class TemperatureController(object):
     def __init__(self):
         """
         Initializes the pid.

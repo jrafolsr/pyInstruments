@@ -10,7 +10,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
 from dash.dependencies import Input, Output, State
-import PidTask
+import TemperatureController
 from collections import deque
 from visa import ResourceManager
 
@@ -24,7 +24,7 @@ lresources = ResourceManager().list_resources()
 
 # Initialize the pid task
 
-p = PidTask()
+p = TemperatureController()
 
 # Preparing the plot
 plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
@@ -270,7 +270,7 @@ def write_setpoint(value):
                State('dropdown-sourcemeter', 'value'),
                State('rtd-type', 'value')])
 def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr, R0):
-    """The cooling flag needs to be denied, as the PidTask.config() ask if HEATING, just the opposite"""
+    """The cooling flag needs to be denied, as the TemperatureController.config() ask if HEATING, just the opposite"""
     
     if on is None:
         return ['Power off'], True, 0, False
