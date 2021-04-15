@@ -5,5 +5,4 @@ Created on Thu Jul 23 10:43:16 2020
 @author: OPEGLAB
 """
 from .pid_class import Pid
-from . import pid_controls
-from . import global_settings_pid
+from .pid_controls import PidTask

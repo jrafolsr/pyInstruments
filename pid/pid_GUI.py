@@ -10,10 +10,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
 from dash.dependencies import Input, Output, State
- # Globals
-from pyInstruments.pid import global_settings_pid as gs
-import pid_controls as pyPID
-
+import PidTask
 from collections import deque
 from visa import ResourceManager
 
@@ -25,6 +22,10 @@ MAX_LENGTH = 500
 # Listing the available resources
 lresources = ResourceManager().list_resources()
 
+# Initialize the pid task
+
+p = PidTask()
+
 # Preparing the plot
 plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
                    legend =  {'x': 0, 'y': 1, 'xanchor': 'left'},\
@@ -33,8 +34,6 @@ plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
                    )
 
 
-
-gs.init()
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -121,7 +120,7 @@ app.layout = html.Div(children =  [
                 ),
             daq.NumericInput(
                 id='max-power',
-                label = 'Max. action output (V)',
+                label = 'Max. action (V)',
                 min = 0.0,
                 max = 21.00,
                 value = 5.00,
@@ -182,8 +181,8 @@ def update_graph_live(n, n_clear,figure):
         figure['data'][1]['y'] = []
         N_CLICK_PREVIOUS += 1
 
-    temperature = gs.CURRENT_T
-    setpoint = gs.SETPOINT_T
+    temperature = p.current_T
+    setpoint = p.setpoint
     
     if n == 0:
         x = deque([],MAX_LENGTH)
@@ -222,7 +221,7 @@ def update_graph_live(n, n_clear,figure):
                Output('my-daq-indicator', 'color'),
                Output('interval-component', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
-                [State('power-button', 'on')])
+               [State('power-button', 'on')])
 def change_status_on(N, on):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
@@ -235,11 +234,12 @@ def change_status_on(N, on):
     try:
         if status is True:
             print('INFO: Instrument started...')
-            pyPID.pid_start()
+            p.pid_on()
+            p.run()
             label = 'Stop'
         elif status is False:
             print('INFO: Instrument configured and ready!')
-            pyPID.pid_stop()
+            p.pid_off()
             label = 'Start'
         else:
             pass
@@ -251,36 +251,36 @@ def change_status_on(N, on):
         return label, color[1], True
 
 @app.callback([Output('label-setpoint', 'children')],
-        [Input('set-setpoint', 'value')])
+              [Input('set-setpoint', 'value')])
 def write_setpoint(value):
-    pyPID.pid_setpoint(value)
-    label = f'Temperature setpoint is {gs.SETPOINT_T:5.2f} °C'
+    p.pid_setpoint(value)
+    label = f'Temperature setpoint is {p.setpoint:5.2f} °C'
     return [label]
 
 @app.callback([Output('power-button', 'label'),
                Output('my-daq-startbutton', 'disabled'),
                Output('my-daq-startbutton', 'n_clicks'),
                Output('cooling-switch', 'disabled')],
-            [Input('power-button', 'on')],
-             [State('my-daq-startbutton', 'n_clicks'),
-              State('set-setpoint', 'value'),
-              State('cooling-switch', 'on'),
-              State('max-power', 'value'),
-              State('dropdown-multimeter', 'value'),
+              [Input('power-button', 'on')],
+              [State('my-daq-startbutton', 'n_clicks'),
+               State('set-setpoint', 'value'),
+               State('cooling-switch', 'on'),
+               State('max-power', 'value'),
+               State('dropdown-multimeter', 'value'),
                State('dropdown-sourcemeter', 'value'),
                State('rtd-type', 'value')])
 def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr, R0):
-    """The cooling flag needs to be denied, as the pid_init ask if HEATING, just the opposite"""
+    """The cooling flag needs to be denied, as the PidTask.config() ask if HEATING, just the opposite"""
+    
     if on is None:
         return ['Power off'], True, 0, False
+    
     try:
         if on:
-            pyPID.pid_on()
-            pyPID.pid_init(setpoint, not cooling, max_power, mult_addr, source_addr, R0)
+            p.configurate(setpoint, not cooling, max_power, mult_addr, source_addr, R0)
             label = 'Power ON'
             return [label], False, N, True
         else:
-            pyPID.pid_off()
             label = 'Power OFF'
             return [label], True, 0, False
         
@@ -289,12 +289,10 @@ def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr
         print(e)
         return ['ERROR'], True, 0, False
     
-@app.callback([Output('max-power', 'label')],
-        [Input('max-power', 'value')])
+@app.callback([Input('max-power', 'value')])
 def max_power(value):
-    gs.MAX_A = value
-    label = 'Max. power output'
-    return [label]
+    p.max_poutput = value
+
 
 if __name__ == '__main__':
     try:
