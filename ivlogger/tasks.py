@@ -90,7 +90,7 @@ class IVLoggerTask(object):
         
         # Opening the resource only done if not done before
         if self.resource is  None:
-            raise ValueError('The sourcemeter resource has not been define. Please define it throught the resource prpoerty')
+            raise ValueError('The sourcemeter resource has not been defined. Please define it throught the resource attribute')
             
         self.keithley = keithley24XX(self.resource)
 
