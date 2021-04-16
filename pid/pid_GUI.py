@@ -10,9 +10,12 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_daq as daq
 from dash.dependencies import Input, Output, State
-import TemperatureController
+from pyInstruments.pid import TemperatureController
 from collections import deque
 from visa import ResourceManager
+import getopt
+import sys
+
 
 global N_CLICK_PREVIOUS, MAX_LENGTH
 N_CLICK_PREVIOUS = 0
@@ -253,7 +256,7 @@ def change_status_on(N, on):
 @app.callback([Output('label-setpoint', 'children')],
               [Input('set-setpoint', 'value')])
 def write_setpoint(value):
-    p.pid_setpoint(value)
+    p.setpoint = value
     label = f'Temperature setpoint is {p.setpoint:5.2f} °C'
     return [label]
 
@@ -289,14 +292,39 @@ def start_instrument(on, N, setpoint, cooling, max_power, mult_addr, source_addr
         print(e)
         return ['ERROR'], True, 0, False
     
-@app.callback([Input('max-power', 'value')])
+@app.callback([Output('max-power', 'label')],
+        [Input('max-power', 'value')])
 def max_power(value):
     p.max_poutput = value
-
+    label = 'Max. action (V)'
+    return [label]
 
 if __name__ == '__main__':
-    try:
-        app.run_server(debug = True, port = 8052, use_reloader = False)
-    except KeyboardInterrupt as e:
-        print(e)
     
+    # Default values
+    debug = True
+    port = 8052
+    user_reloader = False
+    argv = sys.argv[1:]
+    
+    try:
+        options, args = getopt.getopt(argv, "p:d:r",
+                                   ["port =",
+                                    "debug =",
+                                    "user_reloader = "])
+        
+        
+        for name, value in options:
+            if name in ['-d', '--debug']:
+                debug = value
+            elif name in ['-p', '--port']:
+                port = value
+            elif name in ['-r', '--user_reloader']:
+                user_reloader = value
+                
+        app.run_server(debug = debug, port = port, use_reloader = user_reloader)
+        
+    except KeyboardInterrupt:
+        print("Program terminated.")
+    except Exception as e:
+        print(e)
