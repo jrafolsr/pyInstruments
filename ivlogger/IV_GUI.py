@@ -5,10 +5,6 @@ Created on Fri Oct 11 09:47:49 2019
 @author: JOANRR
 """
 #%%
-# Necessary as long as I'm working in folder nor added to the path by default
-import sys
-sys.path.append(r'C:\Users\OPEGLAB\Documents\lab-instrumentation')
-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -22,15 +18,13 @@ from time import sleep
 global N_CLICK_PREVIOUS
 N_CLICK_PREVIOUS = 0
 # Local libraries
-from pyInstruments.ivlogger import iv_setup
-from pyInstruments.ivlogger import global_settings_iv as gs
+from pyInstruments.ivlogger import IVLoggerTask
 from datetime import datetime
 
 
   
 PORT = 8053 # Where to open the app
 
-gs.init()
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -45,124 +39,135 @@ plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
                    )
         
 #%%
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# Initalize the logging task with the default values
+t = IVLoggerTask()
+
+# Initialize some other variables
+list_of_resources = ResourceManager().list_resources()
+default_resource = [s for s in list_of_resources if 'GPIB' in s]
+default_resource = None if len(default_resource) == 0 else default_resource[0]
+
+app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
 app.title = 'IV logger'
 
 app.layout = html.Div(children =  [
 
-        html.Div(className = 'row', children = [
-        daq.Indicator(id='my-daq-indicator',
-          value=True,
-          color="#FF6633",
-#          className="two columns",
-          size = 25, style = {'width': '50px', 'display': 'inline-block', 'vertical-align':'middle'}
-          ),
-        html.H4('Keithley 2400 Time-Current-Voltage Logger', style = {'width': '40%', 'display': 'inline-block','vertical-align':'middle'})
-        ]),
-        html.Div(id='live-update-text', className = 'row', children  = [
-        html.Div([        
-        dcc.Graph(id='live-update-graph', 
-              figure= { "data": plot_data,
-                          "layout": plot_layout
-                          }
+        html.Div(id='main-row', className = 'row', children = [
+        html.Div(className = 'column left', children = [  
+            daq.Indicator(id='my-daq-indicator',
+              value=True,
+              color="#FF6633",
+    #          className="two columns",
+              size = 25, style = {'width': '50px', 'display': 'inline-block', 'vertical-align':'middle'}
               ),
-        dcc.Interval(
-            id='interval-component',
-            interval = 1000, # in milliseconds
-            n_intervals = 0,
-            disabled = True
-        )],
-        style = {'width' : '60%', 'display': 'inline-block'}        
-        ),
+            html.H4('Keithley 2400 Time-Current-Voltage Logger', style = {'display': 'inline-block','vertical-align':'middle'}),
+    
+                   
+            dcc.Graph(id='live-update-graph', 
+                  figure= { "data": plot_data,
+                              "layout": plot_layout
+                              }
+                  ),
+            dcc.Interval(
+                id='interval-component',
+                interval = 1000, # in milliseconds
+                n_intervals = 0,
+                disabled = True
+                ),
+            html.Span(id = 'resource-selection', children = ['Sourcemeter address']),
+                dcc.Dropdown(id  = 'resource-dropdown',
+                options= [{'label' : name, 'value': name} for name in list_of_resources],
+                value= default_resource,
+                style = {'width' : '100%'},
+                searchable = False
+                ),
+        ]),
         
-        html.Div(id = 'buttons-text', children = [
-           html.Div(children = [
+        html.Div(className = 'column middle',  children = [
            daq.PowerButton(
               id='power-button',
               color =  "#FF5E5E",
               size = 60,
               on = False,
-              style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
             ), 
            daq.StopButton(id='my-daq-startbutton',
               disabled = True,
               buttonText = 'Start',
               n_clicks = 0,
-              style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
               ),
            daq.StopButton(id='clear-button',
              n_clicks = 0,
              buttonText = 'Clear',
-             style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
-             )
-           ]),
-           html.Div(style = {'width' : '100%', 'display': 'inline-block', 'text-align':'center'}, children  = [
-               daq.LEDDisplay(
-                    id = 'my-current-V',
-                    label = "Current voltage (V)",
-                    labelPosition = 'top',
-                    value = f'{0.00:05.2f}',
-                    color= "#FF5E5E",
-                     ),
-               daq.LEDDisplay(
-                    id = 'my-current-I',
-                    label = "Current intensity (mA)",
-                    labelPosition = 'top',
-                    value = f'{0.00:05.2f}',
-                    color= "#FF5E5E",
-                    style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
-                    )
-           ]),
-          html.Div(id  = 'extra-parameters', className = 'row', children = [
-             daq.BooleanSwitch(
+             ),
+           daq.StopButton(id='refresh-button',
+             n_clicks = 0,
+             buttonText = 'Refresh',
+             ),
+           daq.BooleanSwitch(
                   id='mode-switch',
                   label = 'CC mode',
                   on = False,
                   disabled = False,
-                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
                 ),
              daq.BooleanSwitch(
                   id='config-switch',
-                  label = 'Config',
+                  label = 'Configurate',
                   on = False,
                   disabled = False,
-                  style = {'width' : '25%', 'display': 'inline-block', 'vertical-align':'middle'}
                 ),
+             daq.BooleanSwitch(
+                  id='term-switch',
+                  label = 'FRONT',
+                  on = False,
+                  disabled = False,
+                ),
+           ]),
+        html.Div(className = 'column right', children = [
             daq.PrecisionInput(
-                id='value-input',
-                label = f'Current input is 0.00 mA',
-                precision = 4,
-                min = -10,
-                max = 10,
-                value = 0.000E0,
-                style = {'width' : '50%', 'display': 'inline-block', 'vertical-align':'middle'}
-            ),
-            html.Div(id="folder-html"),
+                 id='value-input',
+                 label = 'Current input is 0.00 mA',
+                 precision = 4,
+                 min = -10,
+                 max = 10,
+                 value = 0.000E0,
+                 size = 100,
+                 ),
+            html.Br(),
+            daq.LEDDisplay(
+                 id = 'my-current-V',
+                 label = "Voltage (V)",
+                 labelPosition = 'top',
+                 value = f'{0.00:05.2f}',
+                 color= "#FF5E5E",
+                 size = 30
+                  ),
+            html.Br(),
+            daq.LEDDisplay(
+                 id = 'my-current-I',
+                 label = "Current (mA)",
+                 labelPosition = 'top',
+                 value = f'{0.00:05.2f}',
+                 color= "#FF5E5E",
+                 size = 30
+                 ),
+            html.Br(),
+            html.P(id="folder-html"),
             dcc.Input(id="folder-input",
-                      type="text",
-                      placeholder="Folder",
-                      value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
-                      size = '100%',
-                      style =  {'width' : '100%'}),
-            html.Div(id="filename-html"),
+                type="text",
+                placeholder="Folder",
+                # value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
+                value = r'C:\Users\JOANRR\Documents\Python Scripts\data',
+                size = '100%',
+                style =  {'width' : '100%'}),
+            html.P(id="filename-html"),
             dcc.Input(id="filename-input",
                       type="text",
                       placeholder="Filename",
                       size = '100%',
                       value = 'iv_logger',
-                      style =  {'width' : '60%'})
-          ])
-        ],
-        style = {'width' : '40%', 'height' : '100%', 'display': 'inline-block', 'vertical-align':'top'})
-       ]),
-    html.Div(id = 'source-selection', children = ['Sourcemeter address']),
-    dcc.Dropdown(id  = 'dropdown-menu',
-        options= [{'label' : name, 'value': name} for name in ResourceManager().list_resources()],
-        value= 'GPIB0::25::INSTR',
-        style = {'width' : '50%'},
-        searchable = False
-    ),
-
+                      style =  {'width' : '100%'})
+            ])
+        ]),
    ]) 
     
     
@@ -176,20 +181,20 @@ app.layout = html.Div(children =  [
 def update_graph_live(n, n_clear,figure):
     # Collect some data
     global N_CLICK_PREVIOUS
-    if n_clear > N_CLICK_PREVIOUS or len(gs.ETIME) > 500:
+    if n_clear > N_CLICK_PREVIOUS or len(t.time) > 500:
         print('INFO: Clearing plot')
-        gs.ETIME.clear()
-        gs.VOLTAGE.clear()
-        gs.CURRENT.clear()
+        t.time.clear()
+        t.voltage.clear()
+        t.intensity.clear()
         N_CLICK_PREVIOUS += 1
     
-    x = list(gs.ETIME)
+    x = list(t.time)
     
-    if gs.MODE == 'CV':
-        y = list(gs.CURRENT)
+    if t.mode == 'CV':
+        y = list(t.intensity)
         figure['layout']['yaxis']['title'] = 'Current (mA)'
     else:
-        y = list(gs.VOLTAGE)
+        y = list(t.voltage)
         figure['layout']['yaxis']['title'] = 'Voltage (V)'
        
 #    figure.update_layout(show_legend = True)
@@ -197,7 +202,7 @@ def update_graph_live(n, n_clear,figure):
     figure['data'][0]['y'] = y
 
     if len(x) == 0:  led = ['00.00'] * 2
-    else: led = [f'{gs.VOLTAGE[-1]:05.2f}', f'{gs.CURRENT[-1]*1000:05.2f}']
+    else: led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}']
     
     return figure, led[0], led[1]
 
@@ -205,77 +210,67 @@ def update_graph_live(n, n_clear,figure):
                Output('my-daq-indicator', 'color'),
                Output('interval-component', 'disabled'),
                Output('mode-switch', 'disabled'),
-               Output('config-switch', 'disabled')],
+               Output('config-switch', 'disabled'),
+               Output('term-switch', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
                [State('power-button', 'on'),
-                State('dropdown-menu', 'value')],
+                State('value-input', 'value'),
+                State('config-switch', 'on')],
                 prevent_initial_call = True)
-def change_status_on(N, on, resource):
+def start_measurement(N, on, value, config_flag):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
     
     if on is False:
-        return label, color[1], True, on, on
+        return label, color[1], True, on, on, on
     
     status = calc_status(N + 1) and on
     
     try:
         if status is True:
             print('INFO: Measurement started...')
-            gs.CONFIG_STATUS =  False
-            gs.MEASUREMENT_ON =  True
-            gs.set_configuration('resource1', resource)
-            args, kwargs = gs.get_configuration()
-            thread = Thread(target = iv_setup, args = args, kwargs = kwargs)
+            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt_fix = False))
             thread.daemon = True
             thread.start()
             label = 'Stop'
         elif status is False:
             print('INFO: Instrument configured and ready!')
-            gs.MEASUREMENT_ON =  False
+            t.measurement_off()
             label = 'Start'
         else:
             pass
         
-        return label, color[int(not status)], not status, on, on
+        return label, color[int(not status)], not status, on, on, on
 
     except Exception as e:
-         print('ERROR: An error occured in starting the instrument')
+         print('ERROR: An error occured in starting the instrument. Please restart it.')
          print(e)
-         return label, color[1], True, True
+         return label, color[1], on, on, on
      
 @app.callback([Output('power-button', 'label'),
                Output('my-daq-startbutton', 'disabled'),
                Output('my-daq-startbutton', 'n_clicks')],
         [Input('power-button', 'on')],
-         [State('dropdown-menu', 'value'),
-          State('my-daq-startbutton', 'n_clicks'),
+         [State('my-daq-startbutton', 'n_clicks'),
           State('config-switch', 'on')],
           prevent_initial_call = True)
-def start_instrument(on, resource, N, config_flag):
+def start_instrument(on, N, config_flag):
     if on is None:
         return ['Power off'], True, 
-    
-    if config_flag:
-        gs.set_configuration('interrupt_measurement', True)
-    else:
-        gs.set_configuration('interrupt_measurement', False)
-    
+
     try:
         if on:
             label = 'Power ON'
-            gs.CONFIG_STATUS = config_flag
-            gs.set_configuration('resource1', resource)
-            args, kwargs = gs.get_configuration()
-            iv_setup(*args, **kwargs)
+            t.start_instrument()
             sleep(0.5)
             return [label], False, N
         else:
-            gs.MEASUREMENT_ON =  False
-            gs.CONFIG_STATUS =  config_flag
+            t.measurement_off()
+            t.config_flag = config_flag
             print('INFO: Instrument is off')
             label = 'Power OFF'
             return [label], True, 0
+    
     except Exception as e:
         print('ERROR: An error occured in starting the instrument')
         print(e)
@@ -283,52 +278,79 @@ def start_instrument(on, resource, N, config_flag):
     
 @app.callback([Output('value-input', 'label'),
                Output('mode-switch', 'label')],
-        [Input('value-input', 'value'),
-         Input('mode-switch', 'on')],
+              [Input('value-input', 'value'),
+               Input('mode-switch', 'on')],
          prevent_initial_call = True)
 def set_value(value, mode):
     
     if mode:
-        print(f'INFO: Setting the voltage to: {gs.SET_VALUE:.4g} V')
-        labeli = f'Voltage input is {value:4.2f} V'
-        gs.MODE = 'CV'
-        gs.set_configuration('mode', 'CV')
-        gs.set_configuration('cmpl', 0.05)
+        print(f'INFO: Setting the voltage to: {value:.4g} V')
+        labeli = f'Voltage input is {value:4.2f} V'       
         labelm = 'CV mode'
+        t.value = value
+        t.mode = 'CV'
+        t.configuration['cmpl'] = 0.05
     else:
-        print(f'INFO: Setting the current to: {gs.SET_VALUE:.4g} mA')
-        labeli = f'Current input is {value:4.2f} mA'
-        gs.MODE = 'CC'
-        gs.set_configuration('mode', 'CC')
-        gs.set_configuration('cmpl', 21)
+        print(f'INFO: Setting the current to: {value:.4g} mA')
         labelm = 'CC mode'
+        labeli = f'Current input is {value:4.2f} mA'
+        t.value = value
+        t.mode = 'CC'
+        t.configuration['cmpl'] = 21
         
-    gs.SET_VALUE = value
     return labeli, labelm
+
+@app.callback([Output('term-switch', 'label')],
+        [Input('term-switch', 'on')])
+def set_term(term):
+    if term:
+        term = 'REAR'
+    else:
+        term = 'FRONT'
+    t.configuration['term'] = term
+    
+    return [term]
+
 
 @app.callback([Output('folder-html', 'children')],
         [Input('folder-input', 'value')])
-def set_folder(value):
-    gs.set_configuration('folder', value)
-    children = f'Folder:  {value}'
+def set_folder(folder):
+    children = f'Folder: {folder}'
+    t.folder = folder
     return [children]
 
 @app.callback([Output('filename-html', 'children')],
         [Input('filename-input', 'value')])
-def set_filename(value):
+def set_filename(filename):
     timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
-    fname = timestamp + '_' + value
-    gs.set_configuration('fname', fname)
-    children = f'Filename:  {fname}'
+    filename = timestamp + '_' + filename
+    t.filename = filename
+    children = f'Filename:  {filename}'
     return [children]
 
 
+@app.callback([Output('resource-selection', 'children')],
+        [Input('resource-dropdown', 'value')])
+def set_resrouce(resource):
+    children = f'Sourcemeter addres: {resource}'
+    t.resource = resource
+    return [children]
+
+@app.callback([Output('resource-dropdown', 'value'),
+        Output('resource-dropdown', 'options')],
+        [Input('refresh-button', 'n_clicks')])
+def refresh_resources(n):
+    list_of_resources = ResourceManager().list_resources()
+    default_resource = [s for s in list_of_resources if 'GPIB' in s]
+    default_resource = None if len(default_resource) == 0 else default_resource[0]
+    
+    return default_resource, [{'label' : name, 'value': name} for name in list_of_resources]
 #def open_browser(PORT):
 #	webbrowser.open_new("http://127.0.0.1:{}/".format(PORT))
 
 if __name__ == '__main__':
     try:
-        app.run_server(debug = True, port = PORT, use_reloader = False)
+        app.run_server(debug = True, port = PORT, use_reloader = True)
     except KeyboardInterrupt as e:
         print(e)
 

@@ -1,0 +1,36 @@
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+	
+.column {
+  margin :0;
+  float: left;
+  margin-left: 10px;
+}
+
+.left {
+  width: 60%;
+
+}
+
+.middle {
+  width: 100px;
+  text-align: center;
+}
+
+.right {
+  width: auto;
+
+}
+
+
+.button, button{
+	padding : 0 15px;
+	width: min-content;
+	margin : 10px 10px;
+
+}
