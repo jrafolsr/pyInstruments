@@ -155,8 +155,8 @@ app.layout = html.Div(children =  [
             dcc.Input(id="folder-input",
                 type="text",
                 placeholder="Folder",
-                # value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
-                value = r'C:\Users\JOANRR\Documents\Python Scripts\data',
+                value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
+                # value = r'C:\Users\JOANRR\Documents\Python Scripts\data',
                 size = '100%',
                 style =  {'width' : '100%'}),
             html.P(id="filename-html"),
@@ -350,7 +350,7 @@ def refresh_resources(n):
 
 if __name__ == '__main__':
     try:
-        app.run_server(debug = True, port = PORT, use_reloader = True)
+        app.run_server(debug = True, port = PORT, use_reloader = False)
     except KeyboardInterrupt as e:
         print(e)
 
