@@ -20,10 +20,9 @@ N_CLICK_PREVIOUS = 0
 # Local libraries
 from pyInstruments.ivlogger import IVLoggerTask
 from datetime import datetime
+import getopt
+import sys
 
-
-  
-PORT = 8053 # Where to open the app
 
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
@@ -234,7 +233,6 @@ def start_measurement(N, on, value, config_flag):
             thread.start()
             label = 'Stop'
         elif status is False:
-            print('INFO: Instrument configured and ready!')
             t.measurement_off()
             label = 'Start'
         else:
@@ -349,9 +347,32 @@ def refresh_resources(n):
 #	webbrowser.open_new("http://127.0.0.1:{}/".format(PORT))
 
 if __name__ == '__main__':
+    # Default values
+    debug = True
+    port = 8053
+    user_reloader = False
+    argv = sys.argv[1:]
+    
     try:
-        app.run_server(debug = True, port = PORT, use_reloader = False)
-    except KeyboardInterrupt as e:
+        options, args = getopt.getopt(argv, "p:d:r",
+                                   ["port =",
+                                    "debug =",
+                                    "user_reloader = "])
+        
+        
+        for name, value in options:
+            if name in ['-d', '--debug']:
+                debug = value
+            elif name in ['-p', '--port']:
+                port = value
+            elif name in ['-r', '--user_reloader']:
+                user_reloader = value
+                
+        app.run_server(debug = debug, port = port, use_reloader = user_reloader)
+        
+    except KeyboardInterrupt:
+        print("Program terminated.")
+    except Exception as e:
         print(e)
 
     
