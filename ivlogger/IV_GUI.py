@@ -47,7 +47,7 @@ default_resource = [s for s in list_of_resources if 'GPIB' in s]
 default_resource = None if len(default_resource) == 0 else default_resource[0]
 
 app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
-app.title = 'IV logger'
+app.title = 'IV Logger'
 
 app.layout = html.Div(children =  [
 
@@ -111,13 +111,13 @@ app.layout = html.Div(children =  [
              daq.BooleanSwitch(
                   id='config-switch',
                   label = 'Configurate',
-                  on = False,
+                  on = True,
                   disabled = False,
                 ),
              daq.BooleanSwitch(
                   id='term-switch',
-                  label = 'FRONT',
-                  on = False,
+                  label = 'REAR',
+                  on = True,
                   disabled = False,
                 ),
            ]),
@@ -132,22 +132,24 @@ app.layout = html.Div(children =  [
                  size = 100,
                  ),
             html.Br(),
+            html.P("Voltage (V)"),
             daq.LEDDisplay(
                  id = 'my-current-V',
-                 label = "Voltage (V)",
-                 labelPosition = 'top',
+#                 label = "Voltage (V)",
+#                 labelPosition = 'top',
                  value = f'{0.00:05.2f}',
                  color= "#FF5E5E",
-                 size = 30
+                 size = 40
                   ),
             html.Br(),
+            html.P("Current (mA)"),
             daq.LEDDisplay(
                  id = 'my-current-I',
-                 label = "Current (mA)",
-                 labelPosition = 'top',
+#                 label = "Current (mA)",
+#                 labelPosition = 'top',
                  value = f'{0.00:05.2f}',
                  color= "#FF5E5E",
-                 size = 30
+                 size = 40
                  ),
             html.Br(),
             html.P(id="folder-html"),
@@ -156,13 +158,14 @@ app.layout = html.Div(children =  [
                 placeholder="Folder",
                 value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
                 # value = r'C:\Users\JOANRR\Documents\Python Scripts\data',
-                size = '100%',
+                size = '100',
                 style =  {'width' : '100%'}),
+            html.Br(),
             html.P(id="filename-html"),
             dcc.Input(id="filename-input",
                       type="text",
                       placeholder="Filename",
-                      size = '100%',
+                      size = '100',
                       value = 'iv_logger',
                       style =  {'width' : '100%'})
             ])
@@ -178,15 +181,20 @@ app.layout = html.Div(children =  [
                Input('clear-button', 'n_clicks')],
               [State('live-update-graph', 'figure')])
 def update_graph_live(n, n_clear,figure):
-    # Collect some data
-    global N_CLICK_PREVIOUS
-    if n_clear > N_CLICK_PREVIOUS or len(t.time) > 500:
-        print('INFO: Clearing plot')
+    # Determine which button has been clicked
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        button_id = 'No clicks yet'
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+              
+    if button_id == 'clear-button' or len(t.time) > 500:
+        print('INFO: Clearing plot')  
         t.time.clear()
         t.voltage.clear()
         t.intensity.clear()
-        N_CLICK_PREVIOUS += 1
-    
+        
     x = list(t.time)
     
     if t.mode == 'CV':
@@ -195,12 +203,11 @@ def update_graph_live(n, n_clear,figure):
     else:
         y = list(t.voltage)
         figure['layout']['yaxis']['title'] = 'Voltage (V)'
-       
-#    figure.update_layout(show_legend = True)
+        
     figure['data'][0]['x'] =  x
     figure['data'][0]['y'] = y
 
-    if len(x) == 0:  led = ['00.00'] * 2
+    if len(t.time) == 0:  led = ['00.00'] * 2
     else: led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}']
     
     return figure, led[0], led[1]
@@ -313,7 +320,7 @@ def set_term(term):
 @app.callback([Output('folder-html', 'children')],
         [Input('folder-input', 'value')])
 def set_folder(folder):
-    children = f'Folder: {folder}'
+    children = f'Folder:'
     t.folder = folder
     return [children]
 
@@ -323,7 +330,7 @@ def set_filename(filename):
     timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
     filename = timestamp + '_' + filename
     t.filename = filename
-    children = f'Filename:  {filename}'
+    children = f'Filename:'
     return [children]
 
 
@@ -339,7 +346,7 @@ def set_resrouce(resource):
         [Input('refresh-button', 'n_clicks')])
 def refresh_resources(n):
     list_of_resources = ResourceManager().list_resources()
-    default_resource = [s for s in list_of_resources if 'GPIB' in s]
+    default_resource = [s for s in list_of_resources if 'GPIB0::25' in s]
     default_resource = None if len(default_resource) == 0 else default_resource[0]
     
     return default_resource, [{'label' : name, 'value': name} for name in list_of_resources]
@@ -354,7 +361,7 @@ if __name__ == '__main__':
     argv = sys.argv[1:]
     
     try:
-        options, args = getopt.getopt(argv, "p:d:r",
+        options, args = getopt.getopt(argv, "p:d:r:",
                                    ["port =",
                                     "debug =",
                                     "user_reloader = "])
