@@ -316,11 +316,17 @@ if __name__ == '__main__':
         
         for name, value in options:
             if name in ['-d', '--debug']:
-                debug = value
+                if value.lower() in ['true', '1']:
+                    debug = True
+                else:
+                    debug = False       
             elif name in ['-p', '--port']:
                 port = value
             elif name in ['-r', '--user_reloader']:
-                user_reloader = value
+                if value.lower() in ['true', '1']:
+                    user_reloader = True
+                else:
+                    user_reloader = False
                 
         app.run_server(debug = debug, port = port, use_reloader = user_reloader)
         
