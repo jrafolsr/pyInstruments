@@ -68,7 +68,7 @@ class TemperatureController(object):
         # Initialize the properties of the class
         self.setpoint = setpoint
         self.heating = heating
-        self.pid_on = False
+        self.pid_running = False
         self.max_poutput = max_poutput
         self.R0 = R0
         
@@ -123,7 +123,7 @@ class TemperatureController(object):
         
         pid.set_setpoint(self.current_T) # Initialize the setpoint to a the current temperature
               
-        while self.pid_on:
+        while self.pid_running:
             try:
                 time1 = time()
                 
@@ -189,14 +189,14 @@ class TemperatureController(object):
         Sets the pid to the on status.
         
         """
-        self.pid_on = True
+        self.pid_running = True
 
     def pid_off(self):
         """
         Sets the pid to the off status.
         
         """
-        self.pid_on = False
+        self.pid_running = False
         
         with self.lock:
             with open(self.log_file,'w') as f:
