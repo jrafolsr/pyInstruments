@@ -318,7 +318,6 @@ if __name__ == '__main__':
             elif name in ['-p', '--port']:
                 port = value
             elif name in ['-r', '--user_reloader']:
-                print(value)
                 if value.lower() in ['true', '1']:
                     user_reloader = True
                 else:
