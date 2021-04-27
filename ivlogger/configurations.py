@@ -15,7 +15,10 @@ from time import sleep, time
 from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
 import os
+from os.path import join as pjoin
 from pyInstruments.ivlogger import global_settings_iv as gs
+
+ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def dt_calc(etime):
     """Returns an interval of time that increased as the ellapsed time etime increases"""
@@ -114,7 +117,7 @@ def iv_setup(value, mode = 'CC', rtime = np.inf, dt = 0.25,\
                 itime =  ttime
                 start = False
 
-            with open('../temp/temp.dat') as f1:
+            with open(pjoin(ABSOLUTE_PATH, 'temp/temp.dat')) as f1:
                 temperature = float(f1.read())
                 
             with open(filename,'a') as f:

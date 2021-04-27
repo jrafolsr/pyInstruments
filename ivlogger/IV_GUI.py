@@ -7,7 +7,7 @@ Created on Fri Oct 11 09:47:49 2019
 #%%
 # Necessary as long as I'm working in folder nor added to the path by default
 import sys
-#sys.path.append(r'C:\Users\OPEGLAB\Documents\lab-instrumentation')
+sys.path.append('/home/pi/Documents/PythonScripts/')
 
 import dash
 import dash_core_components as dcc
