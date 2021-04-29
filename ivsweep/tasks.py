@@ -13,8 +13,7 @@ Created on Wed Jun 24 10:37:57 2020
 import numpy as np
 from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
-import os
-
+from pathlib import Path
  
 class IVSweeperTask(object):
     def __init__(self, resource = None, folder = '.\\', filename = 'voltsge-sweep',\
@@ -60,7 +59,7 @@ class IVSweeperTask(object):
         self.voltage = []
         self.intensity = []
         self.resource = resource
-        self.folder = folder
+        self.folder = Path(folder)
         self.filename = filename
 
         self.configuration = dict(start = start, stop = stop, step = step, mode = mode, sweep_list = sweep_list,\
@@ -87,10 +86,11 @@ class IVSweeperTask(object):
         
         ############  LOGGING THE DATA ###################################
         # Opening the file to save the data
-        filename = os.path.join(self.folder, self.filename + '.txt')  
-        if not os.path.isfile(filename):
+        filename = Path(self.folder) / (self.filename + '.txt')  
+        
+        if not filename.exists():
             with open(filename,'a') as f:
-                f.write(('# ' + 2*'{:^12}\t' + '\n').format('Voltage(V)','Current(A)', 'Time(s)'))
+                f.write(('# ' + 3*'{:^12}\t' + '\n').format('Voltage(V)','Current(A)', 'Time(s)'))
         
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -99,8 +99,8 @@ class IVSweeperTask(object):
         
         with open(filename,'a') as f:
             f.write('# {}\n'.format(timestamp))
-            f.write('# Delay between steps: {}'.format(self.configuration['delay']))
-            np.savetxt(f, data[:,[0,1,3]])
+            f.write('# Delay between steps: {}\n'.format(self.configuration['delay']))
+            np.savetxt(f, data[:,[0,1,3]], fmt = '%.6f')
         
         self.voltage = data[:,0]
         self.intensity = data[:,1]
