@@ -160,7 +160,7 @@ class IVLoggerTask(object):
                     itime =  ttime
                     start = False
     
-                with open(Path(r'..\temp\temp.dat')) as f:
+                with open(Path('../temp/temp.dat')) as f:
                     temperature = float(f.read())
                     
                 with open(filename,'a') as f:

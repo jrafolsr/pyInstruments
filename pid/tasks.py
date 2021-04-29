@@ -34,7 +34,7 @@ class TemperatureController(object):
         # Creates a lock class to block the access to the temperature writing
         self.lock = Lock()
         # Files to store and read the setpoint and Treal
-        self.log_file = Path(r'..\temp\temp.dat')
+        self.log_file = Path('../temp/temp.dat')
         
         
     
