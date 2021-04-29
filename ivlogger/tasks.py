@@ -14,9 +14,8 @@ import numpy as np
 from time import sleep, time
 from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
-import os
 from collections import deque
-
+from pathlib import Path
 
 def dt_calc(etime):
     """Returns an interval of time that increased as the ellapsed time etime increases"""
@@ -34,7 +33,7 @@ def dt_calc(etime):
         return 60.0
  
 class IVLoggerTask(object):
-    def __init__(self, resource = None, folder = '.\\', filename = 'voltage-time-data',\
+    def __init__(self, resource = None, folder = Path('.\\'), filename = 'voltage-time-data',\
                   mode = 'CC', term = 'FRONT', fw = False, beeper = True, cmpl = 21.0, Ncount = 1,\
                   aver = False, nplc = 1.0, config_flag = True):
         """
@@ -123,8 +122,8 @@ class IVLoggerTask(object):
         
         ############  LOGGING THE DATA ###################################
         # Opening the file to save the data
-        filename = os.path.join(self.folder, self.filename + '.txt')  
-        if not os.path.isfile(filename):
+        filename = Path(self.folder) / (self.filename + '.txt')  
+        if not filename.exists():
             with open(filename,'a') as f:
                 f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('Step','Time','Current','Voltage', 'Absolute time', 'Temperature'))
                 f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('i','s','A', 'V', 's','C'))
@@ -161,7 +160,7 @@ class IVLoggerTask(object):
                     itime =  ttime
                     start = False
     
-                with open(r'..\temp\temp.dat') as f:
+                with open(Path(r'..\temp\temp.dat')) as f:
                     temperature = float(f.read())
                     
                 with open(filename,'a') as f:
