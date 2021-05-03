@@ -13,6 +13,9 @@ from numpy import sqrt, isclose, nan
 from threading  import Lock
 today = datetime.date.today().strftime("%d%m%Y")
 from pathlib import Path
+from pyInstruments import __file__ as module_folder
+
+tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
 def calc_temperature(R, R0 = 100.0, alpha = 3.9083e-3, beta =  -5.7750e-7):
     """Returns the temperature in °C according to the Standard Class B Pt100/1000, default is Pt100"""
@@ -34,7 +37,7 @@ class TemperatureController(object):
         # Creates a lock class to block the access to the temperature writing
         self.lock = Lock()
         # Files to store and read the setpoint and Treal
-        self.log_file = Path('../temp/temp.dat')
+        self.log_file = tempfile
         
         
     

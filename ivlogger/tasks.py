@@ -16,6 +16,9 @@ from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
 from collections import deque
 from pathlib import Path
+from pyInstruments import __file__ as module_folder
+
+tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
 def dt_calc(etime):
     """Returns an interval of time that increased as the ellapsed time etime increases"""
@@ -159,8 +162,8 @@ class IVLoggerTask(object):
                 else:
                     itime =  ttime
                     start = False
-    
-                with open(Path('../temp/temp.dat')) as f:
+                    
+                with open(tempfile) as f:
                     temperature = float(f.read())
                     
                 with open(filename,'a') as f:
