@@ -263,7 +263,9 @@ def start_measurement(N, on, value, config_flag):
 def start_instrument(on, N, config_flag):
     if on is None:
         return ['Power off'], True, 
-
+    
+    t.config_flag = config_flag
+    
     try:
         if on:
             label = 'Power ON'
@@ -272,7 +274,6 @@ def start_instrument(on, N, config_flag):
             return [label], False, N
         else:
             t.measurement_off()
-            t.config_flag = config_flag
             print('INFO: Instrument is off')
             label = 'Power OFF'
             return [label], True, 0
