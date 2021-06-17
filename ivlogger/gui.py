@@ -128,7 +128,7 @@ app.layout = html.Div(children =  [
                  label = 'Current input is 0.00 mA',
                  precision = 4,
                  min = -10,
-                 max = 10,
+                 max = 50,
                  value = 0.000E0,
                  size = 100,
                  ),
