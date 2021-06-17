@@ -220,7 +220,7 @@ class IVL_LoggerTask(object):
                 print(e)
                 break
     
-        self.keithley.outpoff()                
+        # self.keithley.outpoff()  
         self.flame.close()
         
     def measurement_on(self):
@@ -236,7 +236,7 @@ class IVL_LoggerTask(object):
         t  = np.hstack((etime, current, voltage, integration_time, data))
         t = t.reshape((1, t.shape[0]))
         with open(self.filename, 'a') as f:
-           np.savetxt(f, t, fmt = '% 8.2f')
+           np.savetxt(f, t, fmt = '%8.6g')
 
 if __name__ == '__main__':
         # This will only be used if the script is called as it is, not if it is used as a function
@@ -258,13 +258,15 @@ if __name__ == '__main__':
     
     folder = r'C:\Users\JOANRR\Documents\Python Scripts\data\Etienne'
     
-    filename = 'test02'
+    filename = 'graphene_device02'
     
     m = IVL_LoggerTask(sourcemeter=sourcemeter, spectrometer=spectrometer, integration_time=integration_time, n_spectra=n_spectra, folder = folder, filename = filename)
     
     intensity = 1.0 #mA
     
+    m.config_flag = False
     m.configuration['term'] = 'FRONT'
+    m.configuration['cmpl'] = 51
     m.value = intensity
     m.configurate()
     
