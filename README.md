@@ -20,7 +20,7 @@ The folders [ivlogger](ivlogger) and [pid](pid) contain two examples of higher l
 
 - The [ivlogger](ivlogger) allows to configure a Keithley 2400 to supply a constant current/voltage while measuring the voltage/current. A graphical user interface using the [dash](https://dash.plotly.com/) framework is also provided by executing [IV_GUI](IV_GUI).
 
-- The [pid](pid) contains a proportional-integral-derivative algorithm that can be use to control the action given to a system. On top of that, the [pid_GUI](pid/pid_GUI.py) and [pid_controls](pid/pid_controls.py) provide a example of usage: an intrument that controls the temperature of a thermoelectric Peltier cell. The temperature is read using an Agilent 34461A multimeter while an Agilent 34401A power supply is use to power the Peltier cell. The program can be run through its [GUI](pid/pid_GUI.py).
+- The [pid](pid) contains a proportional-integral-derivative algorithm that can be use to control the action given to a system. On top of that, the [pid_GUI](pid/gui.py) and [pid_controls](pid/tasks.py) provide a example of usage: an intrument that controls the temperature of a thermoelectric Peltier cell. The temperature is read using an Agilent 34461A multimeter while an Agilent 34401A power supply is use to power the Peltier cell. The program can be run through its [GUI](pid/gui.py).
 
 # (In preparation) Installation & documentation
 
