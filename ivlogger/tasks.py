@@ -66,6 +66,7 @@ class IVLoggerTask(object):
             Number of pulse light cycles to integrate. The default is 1.0.
         config_flag : bool, optional
             Whether to configurate or not the sourcemeter. The default is True.
+
         Returns
         -------
         None.
@@ -106,7 +107,7 @@ class IVLoggerTask(object):
             else:
                 raise ValueError('ERROR: Configuration mode not known! Only CC or CV allowed')
             
-    def run(self, value, runtime = np.inf, dt = 0.25, interrupt_measurement = True, dt_fix = True):
+    def run(self, value, runtime = np.inf, dt = 0.25, interrupt_measurement = True, dt_fix = True, external_variable = ('Temperature', 'C')):
         """
         Parameters
         ----------
@@ -120,6 +121,8 @@ class IVLoggerTask(object):
             If True, only the data logging will be interrupted, the sourcemetert will continue feeding the current/voltage. The default is True.
         dt_fix : bool, optional
             If True, the time interval is fixed. If set to false, then it uses the time interval from the function dt_calc(). The default is True.
+        external_variable : tuple, optional
+            Tuple of len 2 with the name and units of the external vairable save at temp.dat. The default is ('Temperature', 'C').
 
         """
         
@@ -128,8 +131,8 @@ class IVLoggerTask(object):
         filename = Path(self.folder) / (self.filename + '.txt')  
         if not filename.exists():
             with open(filename,'a') as f:
-                f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('Step','Time','Current','Voltage', 'Absolute time', 'Temperature'))
-                f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('i','s','A', 'V', 's','C'))
+                f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('Step','Time','Current','Voltage', 'Absolute time', external_variable[0]))
+                f.write(('# {:^5}\t'+5*'{:^12}\t' + '\n').format('i','s','A', 'V', 's',external_variable[1]))
         
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -164,10 +167,10 @@ class IVLoggerTask(object):
                     start = False
                     
                 with open(tempfile) as f:
-                    temperature = float(f.read())
+                    external_value = float(f.read())
                     
                 with open(filename,'a') as f:
-                    f.write(('{:^5d}\t' +5*'{:^10.6f}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, temperature))
+                    f.write(('{:^5d}\t' +5*'{:^10.6f}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, external_value))
                 
                 i += 1
                 

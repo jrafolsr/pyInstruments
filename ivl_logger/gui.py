@@ -13,15 +13,18 @@ from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 from threading import Thread #, Timer
 #import webbrowser
-from pyvisa import ResourceManager
 from time import sleep
 global N_CLICK_PREVIOUS
 N_CLICK_PREVIOUS = 0
+
 # Local libraries
 from pyInstruments.ivlogger import IVLoggerTask
+from pyInstruments.ads11X5_logger import ADS11x5Logger
 from datetime import datetime
 import getopt
 import sys
+from pathlib import Path
+from pyvisa import ResourceManager
 
 
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
@@ -29,17 +32,23 @@ calc_status = lambda x:  bool(abs(int((1j**x).real)))
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 # Preparing the plot
-plot_data = [go.Scatter(x=[], y=[], name = 'voltage', mode = 'lines+markers')]
+plot_data = [go.Scatter(x=[], y=[], name = 'voltage', mode = 'lines+markers'),\
+             go.Scatter(x=[], y=[], name = 'photodiode', mode = 'lines+markers', xaxis = 'x', yaxis = 'y2')]
 
 plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
                    legend =  {'x': 0, 'y': 1, 'xanchor': 'left'},\
                    xaxis = dict(title =  "Timestamp"),\
-                   yaxis = dict( title =  "Voltage (V)")
-                   )
-        
+                   yaxis = dict( title =  "Voltage (V)"),\
+                   yaxis2 = dict(title = 'Photodiode signal (V)',\
+                                 anchor =  'x',\
+                                 overlaying = 'y',\
+                                 side = 'right',\
+                                 ))
+
 #%%
 # Initalize the logging task with the default values
 t = IVLoggerTask()
+p = ADS11x5Logger()
 
 # Initialize some other variables
 list_of_resources = ResourceManager().list_resources()
@@ -47,7 +56,7 @@ default_resource = [s for s in list_of_resources if 'GPIB' in s]
 default_resource = None if len(default_resource) == 0 else default_resource[0]
 
 app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
-app.title = 'IV Logger'
+app.title = 'Current-Voltage-Luminance Logger'
 
 app.layout = html.Div(children =  [
 
@@ -127,36 +136,60 @@ app.layout = html.Div(children =  [
                  label = 'Current input is 0.00 mA',
                  precision = 4,
                  min = -10,
-                 max = 10,
+                 max = 50,
                  value = 0.000E0,
                  size = 100,
                  ),
             html.Br(),
-            html.P("Voltage (V)"),
-            daq.LEDDisplay(
-                 id = 'my-current-V',
-#                 label = "Voltage (V)",
-#                 labelPosition = 'top',
-                 value = f'{0.00:05.2f}',
-                 color= "#FF5E5E",
-                 size = 40
-                  ),
-            html.Br(),
-            html.P("Current (mA)"),
-            daq.LEDDisplay(
-                 id = 'my-current-I',
-#                 label = "Current (mA)",
-#                 labelPosition = 'top',
-                 value = f'{0.00:05.2f}',
-                 color= "#FF5E5E",
-                 size = 40
-                 ),
+            html.P(["Voltage (V)",
+                    daq.LEDDisplay(
+                         id = 'my-current-V',
+                         value = f'{0.00:05.2f}',
+                         color= "#FF5E5E",
+                         size = 25
+                          )]),
+            html.P(["Current (mA)",
+                    daq.LEDDisplay(
+                         id = 'my-current-I',
+                         value = f'{0.00:05.2f}',
+                         color= "#FF5E5E",
+                         size = 25
+                         )]),
+            html.P(["Photodiode (V)",
+                    daq.LEDDisplay(
+                         id = 'my-current-L',
+                         value = f'{0.00:05.2f}',
+                         color= "#FF5E5E",
+                         size = 25
+                         )]),
+            html.P(["PGA photodiode:",
+                    dcc.RadioItems(id = 'pga-photodiode',
+                           options=[
+                            {'label': '2/3', 'value': 2/3},
+                            {'label': '1', 'value': 1},
+                            {'label': '2', 'value':2},
+                            {'label': '4', 'value':4},
+                            {'label': '8', 'value':8},
+                            {'label': '16', 'value':8}
+                            ],
+                            value = 1,
+                            labelStyle={'display': 'inline-block'}
+                        ),\
+                    daq.PrecisionInput(
+                         id='calibration-factor',
+                         label = 'Photodiode factor ([cd/m2]/V)',
+                         precision = 4,
+                         value = 1,
+                         size = 100,
+                         ),
+                            ],style = {'display': 'inline-block'}
+                ),
             html.Br(),
             html.P(id="folder-html"),
             dcc.Input(id="folder-input",
                 type="text",
                 placeholder="Folder",
-                value = r'C:\Users\OPEGLAB\Documents\data\goniospectrometer',
+                value = str(Path.home() / 'Documents'),
                 # value = r'C:\Users\JOANRR\Documents\Python Scripts\data',
                 size = '100',
                 style =  {'width' : '100%'}),
@@ -176,11 +209,13 @@ app.layout = html.Div(children =  [
 # Multiple components can update everytime interval gets fired.
 @app.callback([Output('live-update-graph', 'figure'),
                Output('my-current-V', 'value'),
-               Output('my-current-I', 'value')],
+               Output('my-current-I', 'value'),\
+               Output('my-current-L', 'value')],
               [Input('interval-component', 'n_intervals'),
                Input('clear-button', 'n_clicks')],
-              [State('live-update-graph', 'figure')])
-def update_graph_live(n, n_clear,figure):
+              [State('live-update-graph', 'figure'),\
+               State('calibration-factor', 'value')])
+def update_graph_live(n, n_clear,figure, calibration_factor):
     # Determine which button has been clicked
     ctx = dash.callback_context
 
@@ -194,6 +229,8 @@ def update_graph_live(n, n_clear,figure):
         t.time.clear()
         t.voltage.clear()
         t.intensity.clear()
+        figure['data'][1]['x'] =  []
+        figure['data'][1]['y'] = []
         
     x = list(t.time)
     
@@ -203,14 +240,19 @@ def update_graph_live(n, n_clear,figure):
     else:
         y = list(t.voltage)
         figure['layout']['yaxis']['title'] = 'Voltage (V)'
-        
+
     figure['data'][0]['x'] =  x
     figure['data'][0]['y'] = y
-
-    if len(t.time) == 0:  led = ['00.00'] * 2
-    else: led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}']
     
-    return figure, led[0], led[1]
+    luminance = p.values[0] * calibration_factor if p.values[0] != None else 0.00
+    figure['data'][1]['x'].append(datetime.now())
+    figure['data'][1]['y'].append(luminance)
+
+    if len(t.time) == 0:  led = ['00.00'] * 3
+    else:            
+        led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}', f'{luminance:05.2f}']
+        
+    return figure, led[0], led[1], led[2]
 
 @app.callback([Output('my-daq-startbutton', 'buttonText'),
                Output('my-daq-indicator', 'color'),
@@ -235,12 +277,18 @@ def start_measurement(N, on, value, config_flag):
     try:
         if status is True:
             print('INFO: Measurement started...')
+            # Start thread for the  ADS11xLogger task
+            thread_photo = Thread(target = p.measure, kwargs = dict(continuous = True))
+            thread_photo.daemon = True
+            thread_photo.start()
+            # Start thread for the IV_logger task
             thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt_fix = False))
             thread.daemon = True
             thread.start()
             label = 'Stop'
         elif status is False:
             t.measurement_off()
+            p.measurement_off()
             label = 'Start'
         else:
             pass
@@ -257,12 +305,17 @@ def start_measurement(N, on, value, config_flag):
                Output('my-daq-startbutton', 'n_clicks')],
         [Input('power-button', 'on')],
          [State('my-daq-startbutton', 'n_clicks'),
-          State('config-switch', 'on')],
+          State('config-switch', 'on'),\
+          State('pga-photodiode', 'value')],
           prevent_initial_call = True)
-def start_instrument(on, N, config_flag):
+
+def start_instrument(on, N, config_flag, pga_value):
     if on is None:
         return ['Power off'], True, 
-
+    
+    t.config_flag = config_flag
+    p.configure_channels(gain = pga_value)
+    
     try:
         if on:
             label = 'Power ON'
@@ -271,7 +324,7 @@ def start_instrument(on, N, config_flag):
             return [label], False, N
         else:
             t.measurement_off()
-            t.config_flag = config_flag
+            p.measurement_off()
             print('INFO: Instrument is off')
             label = 'Power OFF'
             return [label], True, 0
@@ -320,7 +373,7 @@ def set_term(term):
 @app.callback([Output('folder-html', 'children')],
         [Input('folder-input', 'value')])
 def set_folder(folder):
-    children = f'Folder:'
+    children = 'Folder:'
     t.folder = folder
     return [children]
 
@@ -330,23 +383,24 @@ def set_filename(filename):
     timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
     filename = timestamp + '_' + filename
     t.filename = filename
-    children = f'Filename:'
+    children = 'Filename:'
     return [children]
 
 
 @app.callback([Output('resource-selection', 'children')],
         [Input('resource-dropdown', 'value')])
-def set_resrouce(resource):
+def set_resource(resource):
     children = f'Sourcemeter addres: {resource}'
     t.resource = resource
     return [children]
 
 @app.callback([Output('resource-dropdown', 'value'),
         Output('resource-dropdown', 'options')],
-        [Input('refresh-button', 'n_clicks')])
+        [Input('refresh-button', 'n_clicks')],
+        prevent_initial_call = True)
 def refresh_resources(n):
     list_of_resources = ResourceManager().list_resources()
-    default_resource = [s for s in list_of_resources if 'GPIB0::25' in s]
+    default_resource = [s for s in list_of_resources if 'GPIB0' in s]
     default_resource = None if len(default_resource) == 0 else default_resource[0]
     
     return default_resource, [{'label' : name, 'value': name} for name in list_of_resources]
@@ -380,7 +434,7 @@ if __name__ == '__main__':
                     user_reloader = True
                 else:
                     user_reloader = False
-                
+
         app.run_server(debug = debug, port = port, use_reloader = user_reloader)
         
     except KeyboardInterrupt:
