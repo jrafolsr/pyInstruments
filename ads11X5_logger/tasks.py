@@ -9,7 +9,6 @@ Created on Fri Jan 14 10:14:38 2022
 import time
 import board
 import busio
-import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
 from threading import Lock
 from pathlib import Path
@@ -18,7 +17,7 @@ from pyInstruments import __file__ as module_folder
 tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
 class ADS11x5Logger():
-    def __init__(self, channels_config = [('diff', (0,1))], gain =  1):
+    def __init__(self, channels_config = [('diff', (0,1))], gain =  1, address = 72, model = '1015'):
         
         # Files to store and read the setpoint and Treal
         self.log_file = tempfile
@@ -28,11 +27,19 @@ class ADS11x5Logger():
         i2c = busio.I2C(board.SCL, board.SDA)
 
         # Create the ADC object using the I2C bus
-        self.ads = ADS.ADS1115(i2c,gain = gain)
+        if model == '1015':
+            import adafruit_ads1x15.ads1015 as ADS
+            self.ads = ADS.ADS1015(i2c,gain = gain)
+        elif model == '1115':
+            import adafruit_ads1x15.ads1115 as ADS
+            self.ads = ADS.ADS1115(i2c,gain = gain)
+        else:
+            raise ValueError(f'{model} is not an valid model, only "1115" or "1x15" accepted.')
+            
         ## Channels internal names
         self._channels = [ADS.P0, ADS.P1, ADS.P2, ADS.P3]
         # Configure the channels
-        self.configure_channels(channels_config, gain)
+        self.configure_channels(channels_config = channels_config)
         
         # Creates a lock class to block the access to the temperature writing
         self.lock = Lock()
@@ -41,8 +48,7 @@ class ADS11x5Logger():
         
         self.values = [None] * len(self.channels)
         
-    def configure_channels(self, channels_config = [('diff', (0,1))], gain = 1):
-        self.gain = gain
+    def configure_channels(self, channels_config = [('diff', (0,1))]):
         
         self.channels = []
         
@@ -52,10 +58,11 @@ class ADS11x5Logger():
             elif c[0] == 'single':
                 self.channels.append(AnalogIn(self.ads, c[1]))
             else:
-                raise ValueError('Channel configuration not valid. Only "diff" and "single" accepted.')
+                raise ValueError(f'Channel configuration not valid. Only "diff" and "single" accepted ({c[0]} not accepted.')
         
         return None    
-    def measure(self, delay = 0.5, continuous = False, channel2export = 0, show_print = False):
+    
+    def measure(self, delay = 0.01, continuous = False, show_print = False, write_to_file = False, channel2export = 0):
         self.running = True
         self.delay = delay
         if show_print:
@@ -67,10 +74,11 @@ class ADS11x5Logger():
                 if show_print:
                     print(('\r ' + "{:^8.5f}\t" * len(self.channels)).format(*self.values), end =''  )
                 
-                with self.lock:
-                    temp = self.values[channel2export]
-                    with open(self.log_file, 'w') as f:
-                        f.write(f'{temp:8.6f}')
+                if write_to_file:
+                    with self.lock:
+                        temp = self.values[channel2export]
+                        with open(self.log_file, 'w') as f:
+                            f.write(f'{temp:8.6f}')
                 
                 time.sleep(self.delay)
                 

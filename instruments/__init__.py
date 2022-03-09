@@ -12,3 +12,4 @@ from .keysight33500B import keysight33500B
 from .nanovoltmeter import nanovoltmeter
 from .agilentE3631A import agilentE3631A
 from .agilentE36XXA import agilentE36XXA
+from .agilentU272xA import agilentU272xA
