@@ -88,8 +88,18 @@ class ADS11x5Logger():
                 
                 if not continuous:
                     break
+            except OSError as e:
+                print(e)
+                if  e.args[0] == 121:
+                    print('Check the connection of the ADC board!')
+                else:
+                    print('Something wrong with the ADC board...!')
+                self.running = False 
+                break
+                
             except KeyboardInterrupt:
                 print('\nMeasurement stopped.')
+                self.running = False
                 break
 
     def measurement_on(self):
