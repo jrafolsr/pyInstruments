@@ -45,7 +45,7 @@ class ADS11x5Logger():
         self.lock = Lock()
         # Files to store and read the setpoint and Treal
         self.log_file = tempfile
-        
+        self.internal_delay = 0.001 # Delay qhen adquiring voltage values between channels in s
         self.values = [None] * len(self.channels)
         
     def configure_channels(self, channels_config = [('diff', (0,1))]):
@@ -70,7 +70,11 @@ class ADS11x5Logger():
 
         while self.running:
             try:
-                self.values = [c.voltage for c in self.channels]
+                for i, c in enumerate(self.channels):
+                    self.values[i] = c.voltage
+                    time.sleep(self.internal_delay)
+#                self.values = [c.voltage for c in self.channels]
+                
                 if show_print:
                     print(('\r ' + "{:^8.5f}\t" * len(self.channels)).format(*self.values), end =''  )
                 
