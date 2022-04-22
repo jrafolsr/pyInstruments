@@ -18,8 +18,8 @@ global N_CLICK_PREVIOUS
 N_CLICK_PREVIOUS = 0
 
 # Local libraries
-from pyInstruments.ivlogger import IVLoggerTask
 from pyInstruments.ads11X5_logger import ADS11x5Logger
+from pyInstruments.ivl_logger import PH_ADDRESS, PH_GAIN, PH_GAINS, PH_CHANNELS_CONFIG, IVL_LoggerTask
 from datetime import datetime
 import getopt
 import sys
@@ -47,8 +47,9 @@ plot_layout = dict(margin =  {'l': 60, 'r': 60, 'b': 60, 't': 20},\
 
 #%%
 # Initalize the logging task with the default values
-t = IVLoggerTask()
-p = ADS11x5Logger()
+global t
+t = IVL_LoggerTask()
+
 
 # Initialize some other variables
 list_of_resources = ResourceManager().list_resources()
@@ -111,6 +112,12 @@ app.layout = html.Div(children =  [
              n_clicks = 0,
              buttonText = 'Refresh',
              ),
+           daq.BooleanSwitch(
+                  id='controlled_sourcemeter',
+                  label = 'Controled sourcemeter',
+                  on = True,
+                  disabled = False,
+                ),
            daq.BooleanSwitch(
                   id='mode-switch',
                   label = 'CC mode',
@@ -214,7 +221,8 @@ app.layout = html.Div(children =  [
               [Input('interval-component', 'n_intervals'),
                Input('clear-button', 'n_clicks')],
               [State('live-update-graph', 'figure'),\
-               State('calibration-factor', 'value')])
+               State('calibration-factor', 'value')],
+               prevent_initial_call = True)
 def update_graph_live(n, n_clear,figure, calibration_factor):
     # Determine which button has been clicked
     ctx = dash.callback_context
@@ -229,8 +237,7 @@ def update_graph_live(n, n_clear,figure, calibration_factor):
         t.time.clear()
         t.voltage.clear()
         t.intensity.clear()
-        figure['data'][1]['x'] =  []
-        figure['data'][1]['y'] = []
+        t.ph_voltage.clear()
         
     x = list(t.time)
     
@@ -244,13 +251,12 @@ def update_graph_live(n, n_clear,figure, calibration_factor):
     figure['data'][0]['x'] =  x
     figure['data'][0]['y'] = y
     
-    luminance = p.values[0] * calibration_factor if p.values[0] != None else 0.00
-    figure['data'][1]['x'].append(datetime.now())
-    figure['data'][1]['y'].append(luminance)
+    figure['data'][1]['x'] = x
+    figure['data'][1]['y'] = [v * calibration_factor for v in t.ph_voltage]
 
     if len(t.time) == 0:  led = ['00.00'] * 3
     else:            
-        led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}', f'{luminance:05.2f}']
+        led = [f'{t.voltage[-1]:05.2f}', f'{t.intensity[-1]*1000:05.2f}', f'{t.ph_voltage[-1]:05.2f}']
         
     return figure, led[0], led[1], led[2]
 
@@ -259,46 +265,50 @@ def update_graph_live(n, n_clear,figure, calibration_factor):
                Output('interval-component', 'disabled'),
                Output('mode-switch', 'disabled'),
                Output('config-switch', 'disabled'),
-               Output('term-switch', 'disabled')],
+               Output('term-switch', 'disabled'),
+               Output('controlled_sourcemeter', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
                [State('power-button', 'on'),
                 State('value-input', 'value'),
-                State('config-switch', 'on')],
+                State('config-switch', 'on'),
+                State('controlled_sourcemeter', 'on')],
                 prevent_initial_call = True)
-def start_measurement(N, on, value, config_flag):
+def start_measurement(N, on, value, config_flag,controlled_sourcemeter):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
     
     if on is False:
-        return label, color[1], True, on, on, on
+        return label, color[1], True, on, on, on, on
     
     status = calc_status(N + 1) and on
     
     try:
         if status is True:
             print('INFO: Measurement started...')
-            # Start thread for the  ADS11xLogger task
-            thread_photo = Thread(target = p.measure, kwargs = dict(continuous = True))
-            thread_photo.daemon = True
-            thread_photo.start()
-            # Start thread for the IV_logger task
-            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt_fix = False))
+            
+            if controlled_sourcemeter:
+                # Start thread for the IVL_logger task using the sourcemter
+                thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt_fix = False))
+            else:
+                # Start the thread usning only the photodiode
+                thread = Thread(target = t.run_photodiode_only, kwargs = dict(dt_fix = True))
             thread.daemon = True
             thread.start()
             label = 'Stop'
         elif status is False:
-            t.measurement_off()
-            p.measurement_off()
+            if controlled_sourcemeter:
+                t.measurement_off()
+#            p.measurement_off()
             label = 'Start'
         else:
             pass
         
-        return label, color[int(not status)], not status, on, on, on
+        return label, color[int(not status)], not status, on, on, on, on
 
     except Exception as e:
          print('ERROR: An error occured in starting the instrument. Please restart it.')
          print(e)
-         return label, color[1], on, on, on
+         return label, color[1], False, on, on, on, on
      
 @app.callback([Output('power-button', 'label'),
                Output('my-daq-startbutton', 'disabled'),
@@ -306,28 +316,42 @@ def start_measurement(N, on, value, config_flag):
         [Input('power-button', 'on')],
          [State('my-daq-startbutton', 'n_clicks'),
           State('config-switch', 'on'),\
-          State('pga-photodiode', 'value')],
+          State('pga-photodiode', 'value'),
+          State('controlled_sourcemeter', 'on'),
+          State('filename-input', 'value')],
           prevent_initial_call = True)
 
-def start_instrument(on, N, config_flag, pga_value):
+def start_instrument(on, N, config_flag, pga_value, controlled_sourcemeter, filename):
+    """
+    Starts the instrument n*not the measurement. 
+    """
+    global t
     if on is None:
-        return ['Power off'], True, 
+        return ['Power off'], True, 0
+       
+    # Create a new filename every time you start the instrument
+    timestamp = datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")  
+    filename = timestamp + '_' + filename
+    t.filename = filename
     
+    # Configure flag
     t.config_flag = config_flag
-    p.configure_channels(gain = pga_value)
     
     try:
+        # that as gotten to overcomplicated, need to simplify it...
         if on:
-            label = 'Power ON'
-            t.start_instrument()
-            sleep(0.5)
-            return [label], False, N
+            # Start the photodiode readings
+            t.start_photodiode(pga_value)
+            if controlled_sourcemeter:
+                t.start_instrument() # only necessary if we are controlling the sourcemeter
+                sleep(0.5)
+            return ['Power ON'], False, N
         else:
             t.measurement_off()
-            p.measurement_off()
+            t.stop_photodiode()
+            
             print('INFO: Instrument is off')
-            label = 'Power OFF'
-            return [label], True, 0
+            return ['Power OFF'], True, 0
     
     except Exception as e:
         print('ERROR: An error occured in starting the instrument')
@@ -357,6 +381,12 @@ def set_value(value, mode):
         t.configuration['cmpl'] = 21
         
     return labeli, labelm
+
+@app.callback([Output('controlled_sourcemeter', 'label')],
+        [Input('controlled_sourcemeter', 'on')])
+def set_internal_sourcemeter(controlled_sourcemeter):    
+    return ['Controlled sourcemeter' if controlled_sourcemeter else 'Photodiode only']
+
 
 @app.callback([Output('term-switch', 'label')],
         [Input('term-switch', 'on')])
