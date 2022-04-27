@@ -7,9 +7,17 @@ Created on Fri Jan 14 10:14:38 2022
 """
 
 import time
-import board
-import busio
-from adafruit_ads1x15.analog_in import AnalogIn
+import os
+import warnings
+
+if os.name == 'nt':
+    warnings.warn('Windows system, the modules for the adafruit will not be imported. ADS11X5_logger cannot be used.')
+
+else:
+    import board
+    import busio
+    from adafruit_ads1x15.analog_in import AnalogIn
+    
 from threading import Lock
 from pathlib import Path
 from pyInstruments import __file__ as module_folder
