@@ -15,6 +15,14 @@ class keithley24XX(sourcemeter):
             print('You have connected succesfully with a %s' % self.identify[0:36])
         else:
             raise  Exception('Not able to connect with a 24XX family sourcemeter')
+            
+    def reset(self):
+        """
+        Resets the instrument
+        """
+        self.inst.write("*RST")
+        self.inst.write(":SYSTem:TIME:RESet")
+        
     def mode_pulse(self,curr_list,tpulse,term = 'FRONT'):
         """This method implements a pulse generated from the current list from the first argument
         with a time length of tpulse"""
@@ -40,7 +48,7 @@ class keithley24XX(sourcemeter):
         
     def mode_ifix_configure(self,term = 'FRONT', fw = True, cmpl = 21.0, aver = True,\
                             Ncount = 10, beeper = True, nplc = 1, sens = True,\
-                            curr_range = None):
+                            curr_range = None, reset = True):
         """Configures the 2400 to deliver a fix intensity and measure the voltage drop. 
         Optional arguments:
             - term = 'FRONT': The default terminal is FRONT. REAR can also be passed.
@@ -50,9 +58,11 @@ class keithley24XX(sourcemeter):
             - Ncount = 10: Number of samples to average in case filter is enabled.
             - beeper = True: Enables or disables the beeper 
             - nplc = 1: Light cycles
-            HAVE FUN! """
-        self.inst.write("*RST")                  # Reset instrument to default parameters.
-        self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
+            HAVE FUN!
+        """
+        if reset:
+            self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
+            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT %i" % beeper) # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear
         self.inst.write(":SENS:RES:MODE MAN")    # Select manual ohms mode.
@@ -109,15 +119,16 @@ class keithley24XX(sourcemeter):
         
     def mode_vfix_configure(self,term = 'FRONT', fw = False, cmpl = 0.05, beeper = True, aver = True,\
                             Ncount = 10, nplc = 1, sens = True,\
-                            volt_range = None):
+                            volt_range = None, reset = True):
         """Configures the 2400 to deliver a fix voltage and that's it for the moment" 
         Optional arguments:
             - term = 'FRONT': The default terminal is FRONT. REAR can also be passed.
             - compl = 10: Set the compliance in volts, default is 10 V.
             - beeper = True: Enables or disables the beeper 
             HAVE FUN! """
-        self.inst.write("*RST")                  # Reset instrument to default parameters.
-        self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
+        if reset:
+            self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
+            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT %i" % beeper) # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear
         self.inst.write(":SYST:RSEN %i" % fw)         # Select four wire measuremnt ohms mode.       
@@ -161,7 +172,7 @@ class keithley24XX(sourcemeter):
     def check_curr_compliance(self):
         return bool(self.inst.query_ascii_values(':CURRent:PROTection:TRIPped?')[0])
     
-    def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN'):
+    def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN', reset = True, stay_on = False):
         """
         Configures the Keithley to perform a voltage sweep
     
@@ -180,24 +191,34 @@ class keithley24XX(sourcemeter):
         cmpl: itn or float
             The compliance value in A.
         nplc: int or float 0.01 <= nplc <=100
-            Numebr of pulse lught cycles to average the data. The default is 1.
+            Numebr of pulse light cycles to average the data. The default is 1.
        ranging: 'AUTO' or float
            Set the current sensign range to a fix one in the case a value is passed. The default is None and the sourcemeter will adjust the range according to the measured values.
        spacing:'LIN'  or 'LOG'
           Spacinf type of the values in the case of a stair-like sweep.
-       delay: int or float
-           Specify delay in seconds between the settled source value and the measurement reading.        
+       delay: float or string
+           Specify delay in seconds between the settled source value and the measurement reading if 'auto' the sourcemeter determines the best delay. The default is 0.1 s.
+       reset: bool, optional
+           Resets the instrument, erasing all precious configurations. The default is True.
+       stay_on: bool, optional
+           If True the output stays on after the sweep, if False it automatically switch off. The default is False.
     """ 
         print("INFO: Keithley configured in sweep mode")
         
-        self.inst.write("*RST")                  # Reset instrument to default parameters.
+        if reset:
+            self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
         # self.inst.write("*CLS")
         # self.inst.write("*OPC")
         # self.inst.write("*SRE 1")
-        self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
+            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT 1") # Turn on/off the beeper
-        self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear      
-        self.inst.write(":SOUR:CLE:AUTO ON")     # Enable source auto output-off.
+        self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear 
+        
+        if stay_on:
+            self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
+        else: 
+            self.inst.write(":SOUR:CLE:AUTO ON")     # Enable source auto output-off.
+        
         self.inst.write(":SOUR:FUNC VOLT")
         
         Npoints = int((stop - start) / step) + 1
@@ -219,9 +240,12 @@ class keithley24XX(sourcemeter):
             
             self.inst.write(":SOURce:LIST:VOLTage %s" % t)
             self.inst.write(":TRIG:COUN %d" % Npoints)  
-        if (delay == 'AUTO') | (delay == 'auto'):
-            self.inst.write(":SOURce:DELay:AUTO ON")
-            self.sweep_total_time = (0.005  + nplc /50 + 0.05) * Npoints
+        if isinstance(delay, str):
+            if delay.lower() == 'auto':
+                self.inst.write(":SOURce:DELay:AUTO ON")
+                self.sweep_total_time = (0.005  + nplc /50 + 0.05) * Npoints
+            else:
+                raise ValueError('Expected "auto" or a float in the delay kwarg')
         else:
             self.inst.write(":SOURce:DELay %.6f" % delay)
             self.sweep_total_time = (delay  + nplc /50 + 0.05) * Npoints
@@ -254,10 +278,10 @@ class keithley24XX(sourcemeter):
             Array contain the output from the sourcemeter, N x 5, where N is the number of points taken. The first two columns are the voltage and current, respectively.
         
         """
-        self.outpon()
-        
         if delay == None:
             delay = self.sweep_total_time
+        
+        self.outpon()
         data = self.inst.query_ascii_values("READ?", delay = delay, container = array)
         # Reshaping the data to a Npoints x columns array
         data = data.reshape((data.shape[0] // 5, 5))
