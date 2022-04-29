@@ -67,6 +67,7 @@ class keithley24XX(sourcemeter):
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear
         self.inst.write(":SENS:RES:MODE MAN")    # Select manual ohms mode.
         self.inst.write(":SYST:RSEN %i" % fw)         # Select four wire measuremnt ohms mode.
+        self.inst.write(":SOUR:CURR:MODE FIX")      # Fix voltage mode
         self.inst.write(":SOUR:FUNC CURR")       # Select current source function.
         self.inst.write(":SOUR:CURR 0.00")       # Set source to output 10mA.
         self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
@@ -131,9 +132,10 @@ class keithley24XX(sourcemeter):
             self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT %i" % beeper) # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear
-        self.inst.write(":SYST:RSEN %i" % fw)         # Select four wire measuremnt ohms mode.       
+        self.inst.write(":SYST:RSEN %i" % fw)         # Select four wire measuremnt ohms mode. 
+        self.inst.write(":SOUR:VOLT:MODE FIX")      # Fix voltage mode
         self.inst.write(":SOUR:FUNC VOLT")       # Select current source function.
-        self.inst.write(":SOUR:VOLT 0.00")       # Set source to output 0.0V.
+#        self.inst.write(":SOUR:VOLT 0.00")       # Set source to output 0.0V.
         self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
         if volt_range is not None:
             self.inst.write(":SOUR:VOLT:RANG {:.6e}".format(volt_range))
