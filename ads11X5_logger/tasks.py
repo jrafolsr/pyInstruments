@@ -37,10 +37,10 @@ class ADS11x5Logger():
         # Create the ADC object using the I2C bus
         if model == '1015':
             import adafruit_ads1x15.ads1015 as ADS
-            self.ads = ADS.ADS1015(i2c,gain = gain)
+            self.ads = ADS.ADS1015(i2c,gain = gain, address = address)
         elif model == '1115':
             import adafruit_ads1x15.ads1115 as ADS
-            self.ads = ADS.ADS1115(i2c,gain = gain)
+            self.ads = ADS.ADS1115(i2c,gain = gain, address = address)
         else:
             raise ValueError(f'{model} is not an valid model, only "1115" or "1x15" accepted.')
             
