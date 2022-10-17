@@ -177,7 +177,7 @@ app.layout = html.Div(children =  [
                             {'label': '2', 'value':2},
                             {'label': '4', 'value':4},
                             {'label': '8', 'value':8},
-                            {'label': '16', 'value':8}
+                            {'label': '16', 'value':16}
                             ],
                             value = 1,
                             labelStyle={'display': 'inline-block'}
