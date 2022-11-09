@@ -144,8 +144,8 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SENS:AVER:TCON REP")   # Set filter to repeating average
         self.inst.write(":SENS:AVER:COUNT %i" % Ncount)   # Set filter to repeating to 10 measurements
         self.inst.write(":SENS:AVER:STATE %i" % aver)  # Enable fiLter
-        self.inst.write(":SENS:VOLT:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
-        self.inst.write(":SENS:VOLT:RANG:AUTO ON")  # Auto range ON
+        self.inst.write(":SENS:CURR:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
+        self.inst.write(":SENS:CURR:RANG:AUTO ON")  # Auto range ON
         self.inst.write(":SENS:CURR:PROT:LEV %.3g" % cmpl)    # Set the compliance limit.
         
         if not sens:
@@ -174,7 +174,7 @@ class keithley24XX(sourcemeter):
     def check_curr_compliance(self):
         return bool(self.inst.query_ascii_values(':CURRent:PROTection:TRIPped?')[0])
     
-    def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN', reset = True, stay_on = False):
+    def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN', reset = True, stay_on = False, source_range = 'BEST'):
         """
         Configures the Keithley to perform a voltage sweep
     
@@ -204,9 +204,10 @@ class keithley24XX(sourcemeter):
            Resets the instrument, erasing all precious configurations. The default is True.
        stay_on: bool, optional
            If True the output stays on after the sweep, if False it automatically switch off. The default is False.
+       source_ranging: 'AUTO', BEST', or float
+           Set the voltage source range to a fix one in the case a value is passed. The default is 'BEST' and the sourcemeter will adjust the range according to the measured values. 'AUTO' is also accepted.
+       
     """ 
-        print("INFO: Keithley configured in sweep mode")
-        
         if reset:
             self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
         # self.inst.write("*CLS")
@@ -215,6 +216,7 @@ class keithley24XX(sourcemeter):
             self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
         self.inst.write(":SYST:BEEP:STAT 1") # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear 
+        self.inst.write(":SYST:RSEN 0")         # Disable four wire measuremnts
         
         if stay_on:
             self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
@@ -242,6 +244,7 @@ class keithley24XX(sourcemeter):
             
             self.inst.write(":SOURce:LIST:VOLTage %s" % t)
             self.inst.write(":TRIG:COUN %d" % Npoints)  
+        
         if isinstance(delay, str):
             if delay.lower() == 'auto':
                 self.inst.write(":SOURce:DELay:AUTO ON")
@@ -251,20 +254,32 @@ class keithley24XX(sourcemeter):
         else:
             self.inst.write(":SOURce:DELay %.6f" % delay)
             self.sweep_total_time = (delay  + nplc /50 + 0.05) * Npoints
-            
-        self.inst.write(":SOURce:SwEep:RANging BEST")
+        
+        if isinstance(source_range, str):
+            self.inst.write(":SOURce:SWEep:RANGing %s" % source_range.upper())
+        elif isinstance(source_range, (float, int)):
+            self.inst.write(":SOURce:SwEep:RANging FIXED")
+            self.inst.write(":SOURCe:VOLTage:RANGing %.6e" % source_range)
+        else:
+            raise ValueError(f'Source ranging type {type(source_range)} not accepted.')
+        
+        self.inst.write("SENSe:FUNC:CONC OFF")
         self.inst.write(":SENSe:FUNC 'CURR:DC'")
-        self.inst.write(":SENSe:CURR:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
+        self.inst.write(":SENSe:CURR:NPLC %.3f" % nplc)      # Set measurement speed to n PLC.
         self.inst.write(":SENSe:CURR:PROT:LEV %.3g" % cmpl)
         
-        if (ranging != 'AUTO') & (ranging != 'auto'):
+        if isinstance(ranging, str):
+            if ranging.lower() == 'AUTO':
+                self.inst.write(":SENSe:CURRent:RANGe:AUTO ON")
+        elif isinstance(ranging, (int, float)):
+            self.inst.write(":SENSe:CURRent:RANGe:AUTO OFF")
             if ranging >= cmpl:
                 print('INFO: The compliance is increased to match the SENSe range')
-                self.inst.write(":SENSe:CURR:PROT:LEV %.3g" % ranging)   
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3e" % ranging)
             self.inst.write(":SENSe:CURRent:RANGe %.6e" % ranging)
-        
-        
-        
+        else:
+            raise ValueError(f'Sense ranging type {type(ranging)} not accepted.')
+    
     def sweep_read(self, delay = None):
         """
         Launches the configured sweep using the method mode_Isweep_config.
