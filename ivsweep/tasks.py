@@ -100,7 +100,7 @@ class IVSweeperTask(object):
         with open(filename,'a') as f:
             f.write('# {}\n'.format(timestamp))
             f.write('# Delay between steps: {}\n'.format(self.configuration['delay']))
-            np.savetxt(f, data[:,[0,1,3]], fmt = '%.6f')
+            np.savetxt(f, data[:,[0,1,3]], fmt = '%.6f\t%.6e\t%.6f')
         
         self.voltage = data[:,0]
         self.intensity = data[:,1]

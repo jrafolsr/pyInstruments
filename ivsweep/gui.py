@@ -73,6 +73,13 @@ app.layout = html.Div(children =  [
                 style = {'width' : '100%'},
                 searchable = False
                 ),
+            html.Span(id = 'graph-options', children = ['Graph options']),
+            dcc.RadioItems(id = 'select-scale',
+                   options=[
+                    {'label': 'linear', 'value': 'linear'},
+                    {'label': 'log', 'value': 'log'},
+                    ],
+                    value = 'linear')
         ]),
         
         html.Div(className = 'column middle',  children = [
@@ -204,12 +211,13 @@ app.layout = html.Div(children =  [
 
 @app.callback([Output('live-update-graph', 'figure')],
                [Input('my-daq-startbutton', 'n_clicks'),
-                Input('clear-button', 'n_clicks')],
+                Input('clear-button', 'n_clicks'),
+                Input('select-scale', 'value')],
                [State('live-update-graph', 'figure'),
                 State('folder-input', 'value'),
                 State('filename-input', 'value')],
                 prevent_initial_call = True)
-def start_measurement(n_run, n_clear, figure, folder, filename):
+def start_measurement(n_run, n_clear, scale_type, figure, folder, filename):
     
     # Determine which button has been clicked
     ctx = dash.callback_context
@@ -238,6 +246,11 @@ def start_measurement(n_run, n_clear, figure, folder, filename):
         figure['data'] = []
         x = []
         y = []
+    
+    elif button_id == 'select-scale':
+        figure
+        figure['layout']['yaxis']['type'] = scale_type
+        return [figure]
     
     # Updatting the plot
     n_dataset = len(figure['data'])
