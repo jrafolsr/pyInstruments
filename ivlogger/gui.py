@@ -121,6 +121,31 @@ app.layout = html.Div(children =  [
                   on = True,
                   disabled = False,
                 ),
+             html.P('Timestep control'),
+             dcc.RadioItems(id = 'time-selection',
+                   options=[
+                    {'label': 'Auto', 'value': 'auto'},
+                    {'label': 'Manual', 'value': 'manual'},
+                    ],
+                    value = 'auto'),
+             daq.PrecisionInput(
+                 id='time-input',
+                 label = 'dt (s)',
+                 precision = 2,
+                 min = 0.01,
+                 max = 60,
+                 value = 0.25,
+                 size = 100,
+                 disabled = True
+                 ),
+            html.P(id = 'nplc-label', children = ['NPLC']),
+            dcc.Dropdown(id  = 'nplc-input',
+                options= [{'label' : f'{10**i:.2g}', 'value': 10**i} for i in range(-2,2)],
+                value= 1,
+                style = {'width' : '100%'},
+                searchable = False,
+                clearable=False
+                ),
            ]),
         html.Div(className = 'column right', children = [
             daq.PrecisionInput(
@@ -218,25 +243,31 @@ def update_graph_live(n, n_clear,figure):
                Output('interval-component', 'disabled'),
                Output('mode-switch', 'disabled'),
                Output('config-switch', 'disabled'),
-               Output('term-switch', 'disabled')],
+               Output('term-switch', 'disabled'),
+               Output('nplc-input', 'disabled')],
                [Input('my-daq-startbutton', 'n_clicks')],
                [State('power-button', 'on'),
                 State('value-input', 'value'),
-                State('config-switch', 'on')],
+                State('config-switch', 'on'),
+                State('time-selection', 'value'),
+                State('time-input', 'value')],
                 prevent_initial_call = True)
-def start_measurement(N, on, value, config_flag):
+def start_measurement(N, on, value, config_flag, time_mode, time_step):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
     
     if on is False:
-        return label, color[1], True, on, on, on
+        return [label, color[1], True] + [on] * 4
     
     status = calc_status(N + 1) and on
     
     try:
         if status is True:
+            dt_fix = False if time_mode == 'auto' else True
+            
             print('INFO: Measurement started...')
-            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt_fix = False))
+            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix))
+            print(dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix))
             thread.daemon = True
             thread.start()
             label = 'Stop'
@@ -246,12 +277,12 @@ def start_measurement(N, on, value, config_flag):
         else:
             pass
         
-        return label, color[int(not status)], not status, on, on, on
+        return [label, color[int(not status)], not status] + [on] * 4
 
     except Exception as e:
          print('ERROR: An error occured in starting the instrument. Please restart it.')
          print(e)
-         return label, color[1], on, on, on
+         return [label, color[1], True] + [on] * 4
      
 @app.callback([Output('power-button', 'label'),
                Output('my-daq-startbutton', 'disabled'),
@@ -343,6 +374,23 @@ def set_resource(resource):
     t.resource = resource
     return [children]
 
+@app.callback([Output('time-input', 'disabled')],
+        [Input('time-selection', 'value')])
+def set_timestep_mode(value):
+    if value == 'auto':
+        return [True]
+    else:
+        return [False]
+
+@app.callback([Output('nplc-label', 'children')],
+        [Input('nplc-input', 'value')])
+def set_nplc(value):
+    t.configuration['nplc'] = value
+    return ['NPLC']
+
+
+#
+        
 @app.callback([Output('resource-dropdown', 'value'),
         Output('resource-dropdown', 'options')],
         [Input('refresh-button', 'n_clicks')],

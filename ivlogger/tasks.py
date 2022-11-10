@@ -107,6 +107,7 @@ class IVLoggerTask(object):
             else:
                 raise ValueError('ERROR: Configuration mode not known! Only CC or CV allowed')
             
+
     def run(self, value, runtime = np.inf, dt = 0.25, interrupt_measurement = True, dt_fix = True, external_variable = ('Temperature', 'C')):
         """
         Parameters
