@@ -4,7 +4,7 @@ Created on Fri Nov 29 16:42:41 2019
 
 @author: JOANRR
 """
-from time import time
+from time import monotonic
 
 class Pid(object):
     
@@ -42,10 +42,10 @@ class Pid(object):
         if setpoint is not None:
             self.setpoint = setpoint
         if self.first_call:
-            self.prev_time = time()
+            self.prev_time = monotonic()
             self.first_call = False
         # Update all the values
-        self.dt = time() - self.prev_time
+        self.dt = monotonic() - self.prev_time
         self.value = value
         error = self.setpoint - self.value
         pi = self.Kp * error
@@ -66,7 +66,7 @@ class Pid(object):
         else:
             action = self.llimit
         
-        self.prev_time = time()
+        self.prev_time = monotonic()
 
         return action
     def clear(self):

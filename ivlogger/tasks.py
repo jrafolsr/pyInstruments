@@ -11,7 +11,7 @@ Created on Wed Jun 24 10:37:57 2020
 # for driving the LEC devices at diferent modes.
 
 import numpy as np
-from time import sleep, time
+from time import sleep, monotonic
 from pyInstruments.instruments import keithley24XX # This the module I created
 import datetime
 from collections import deque
@@ -156,7 +156,7 @@ class IVLoggerTask(object):
         while etime < runtime and self.running:
             try:
                 
-                time1 = time()
+                time1 = monotonic()
                 [mvoltage, mcurrent, _ , ttime, _ ] =   self.keithley.read()
     
     #            assert not   self.keithley.check_volt_compliance(), 'Compliance reached!'
@@ -192,7 +192,7 @@ class IVLoggerTask(object):
                 else:
                     sleeping_time = dt_calc(etime)
                         
-                while (time() - time1) < sleeping_time and self.running:
+                while (monotonic() - time1) < sleeping_time and self.running:
                     sleep(0.01)
                     
             except KeyboardInterrupt:

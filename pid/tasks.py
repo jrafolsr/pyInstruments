@@ -5,7 +5,7 @@ Created on Thu Oct  4 11:24:33 2018
 @author: joan-fss
 """
 #%%
-from time import sleep, time
+from time import sleep, monotonic
 from pyInstruments.instruments import keysight34461A, agilentE36XXA # This the module I created
 from pyInstruments.pid import Pid
 import datetime
@@ -128,7 +128,7 @@ class TemperatureController(object):
               
         while self.pid_running:
             try:
-                time1 = time()
+                time1 = monotonic()
                 
                 # Turn the Power supply on OBS! i CAN DELETED THAT ONE, i THINK, DOUBLE CHECK
                 if not self.supply.outpstate():
@@ -169,7 +169,7 @@ class TemperatureController(object):
                         f.write(f'{T:5.2f}')
                 
                 # Check the pid status
-                while (time() - time1) < sleeping_time:
+                while (monotonic() - time1) < sleeping_time:
                     sleep(0.01)
                 
             except KeyboardInterrupt:

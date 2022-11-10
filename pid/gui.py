@@ -13,7 +13,7 @@ from dash.dependencies import Input, Output, State
 from pyInstruments.pid import TemperatureController
 from threading  import Thread
 from collections import deque
-from visa import ResourceManager
+from pyvisa import ResourceManager
 import getopt
 import sys
 
