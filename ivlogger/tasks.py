@@ -171,7 +171,7 @@ class IVLoggerTask(object):
                     external_value = float(f.read())
                     
                 with open(filename,'a') as f:
-                    f.write(('{:^5d}\t' +5*'{:^10.6f}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, external_value))
+                    f.write(('{:^5d}\t' +5*'{:^10.6e}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, external_value))
                 
                 i += 1
                 

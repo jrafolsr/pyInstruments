@@ -248,7 +248,7 @@ class IVL_LoggerTask(object):
                     start = False
                                        
                 with open(filename,'a') as f:
-                    f.write(('{:^5d}\t' +5*'{:^10.6f}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, m_phvoltage))
+                    f.write(('{:^5d}\t' +5*'{:^10.6e}\t' + '\n').format(i,etime, mcurrent, mvoltage,ttime, m_phvoltage))
                 
                 i += 1
                 
