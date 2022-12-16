@@ -71,7 +71,9 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SOUR:FUNC CURR")       # Select current source function.
         self.inst.write(":SOUR:CURR 0.00")       # Set source to output 10mA.
         self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
+        self.inst.write(":SOUR:CURR:RANG:AUTO ON".format(curr_range))  
         if curr_range is not None:
+            self.inst.write(":SOUR:CURR:RANG:AUTO OFF".format(curr_range))  
             self.inst.write(":SOUR:CURR:RANG {:.6e}".format(curr_range))        
         self.inst.write(":SENS:VOLT:PROT %.2f" % cmpl)    # Set 10V compliance limit.
         self.inst.write(":TRIG:COUN 1")         # Set to perform one measurement.
