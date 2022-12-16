@@ -183,6 +183,14 @@ app.layout = html.Div(children =  [
                       placeholder = "0 for min delay"
                      ),
                 ]),
+            html.P(id = 'nplc-label', children = ['Set NPLC']),
+                dcc.Dropdown(id  = 'nplc-input',
+                    options= [{'label' : f'{10**i:.2g}', 'value': 10**i} for i in range(-2,2)],
+                    value= 1,
+                    style = {'width' : '100%'},
+                    searchable = False,
+                    clearable=False
+                    ),            
             html.P('List of values:'),
             dcc.Textarea(
                 id='sweeplist-value',
@@ -241,7 +249,7 @@ def start_measurement(n_run, n_clear, scale_type, figure, folder, filename):
         except Exception as e:
              print('ERROR: An error occured in starting the instrument. Please restart it.')
              print(e)
-             return True
+             return [figure]
     elif button_id == 'clear-button':
         figure['data'] = []
         x = []
@@ -275,10 +283,11 @@ def start_measurement(n_run, n_clear, scale_type, figure, folder, filename):
           State('compliance-value', 'value'),
           State('range-menu', 'value'),
           State('sweeplist-value', 'value'),
-          State('delay-value', 'value')],
+          State('delay-value', 'value'),
+          State('nplc-input', 'value')],
           prevent_initial_call = True)
 
-def start_instrument(on, N, resource, start_value, stop_value, step_value, compliance_value, range_value, sweep_list, delay):
+def start_instrument(on, N, resource, start_value, stop_value, step_value, compliance_value, range_value, sweep_list, delay, nplc):
     color = dict(green = "#00cc96", red = '#FF6633')
     t.resource = resource
     sweep_list = [float(s.strip()) for s in sweep_list.strip().split(',')]
@@ -289,6 +298,7 @@ def start_instrument(on, N, resource, start_value, stop_value, step_value, compl
     t.configuration['cmpl'] = compliance_value
     t.configuration['ranging'] = range_value
     t.configuration['delay'] = delay/1000 if delay > 0 else 'auto'
+    t.configuration['nplc'] = nplc
     
     if on is None:
         return color['red'], 'Power OFF', True, False, False
