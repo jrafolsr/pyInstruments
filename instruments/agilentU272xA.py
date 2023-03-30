@@ -47,13 +47,13 @@ class agilentU272xA():
             
             config_str += 'SENS:CURR:NPLC {:d},(@{:d})\n'.format(nplc, ch)
             config_str += 'SENS:VOLT:NPLC {:d},(@{:d})\n'.format(nplc, ch)
-            config_str += 'SOUR:VOLT:RANG {:s},(@{:d})\n'.format(vrg if vrg[0] == 'R' else 'R' + vrg, ch)
-            config_str += 'SOUR:CURR:RANG {:s},(@{:d})\n'.format(crg if crg[0] == 'R' else 'R' + crg, ch)
             
             if md == 'CV':
+                config_str += 'SOUR:VOLT:RANG {:s},(@{:d})\n'.format(vrg if vrg[0] == 'R' else 'R' + vrg, ch)
                 config_str += 'CURR:LIM {},(@{:d})\n'.format(cmpl, ch)
                 config_str += 'VOLT {:.6f},(@{:d})\n'.format(v, ch)
             elif md =='CC':
+                config_str += 'SOUR:CURR:RANG {:s},(@{:d})\n'.format(crg if crg[0] == 'R' else 'R' + crg, ch)
                 config_str += 'VOLT:LIM {},(@{:d})\n'.format(cmpl, ch)
                 config_str += 'CURR {:.6f},(@{:d})\n'.format(v, ch)
             else:
