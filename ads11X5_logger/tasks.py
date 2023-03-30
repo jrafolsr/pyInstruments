@@ -17,10 +17,13 @@ else:
     import board
     import busio
     from adafruit_ads1x15.analog_in import AnalogIn
+    from adafruit_ads1x15.analog_in import _ADS1X15_PGA_RANGE
     
 from threading import Lock
 from pathlib import Path
 from pyInstruments import __file__ as module_folder
+
+BITS_MAX = 32000
 
 tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
@@ -55,6 +58,7 @@ class ADS11x5Logger():
         self.log_file = tempfile
         self.internal_delay = 0.001 # Delay qhen adquiring voltage values between channels in s
         self.values = [None] * len(self.channels)
+        self.bits = [None] * len(self.channels)
         
     def configure_channels(self, channels_config = [('diff', (0,1))]):
         
@@ -82,9 +86,17 @@ class ADS11x5Logger():
                     self.values[i] = c.voltage
                     time.sleep(self.internal_delay)
 #                self.values = [c.voltage for c in self.channels]
+                # Calculate the vits from the voltage, it makes more sense to do otherwise, but I don't want another reading, I want to use the same
+                self.bits = [int(v * BITS_MAX / _ADS1X15_PGA_RANGE[self.ads.gain]) for v in self.values]
                 
                 if show_print:
-                    print(('\r ' + "{:^8.5f}\t" * len(self.channels)).format(*self.values), end =''  )
+                    _temp = []
+                    # Updated to show which percentage of the range are we using
+                    for v, b in zip(self.values, self.bits):
+                        _temp.append(v)
+                        _temp.append(b / BITS_MAX *100)
+                        
+                    print(('\r ' + "{:^8.5f} ({:> 5.1f}%)\t" * len(self.channels)).format(*_temp), end ='' )
                 
                 if write_to_file:
                     with self.lock:
