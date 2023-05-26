@@ -24,7 +24,7 @@ class agilentU272xA():
         self.voltage_range = ['R2V', 'R20V']
         
         
-    def configurate(self, value, channels, mode = 'CV', vrange = '20V', crange = '120mA', compliance = '120mA', nplc = 1):
+    def configurate(self, value, channels, mode = 'CV', vrange = '20V', crange = '10mA', compliance = '120mA', nplc = 1):
         """
         
         Current goes in A
@@ -53,7 +53,7 @@ class agilentU272xA():
             if md == 'CV':
                 config_str += 'CURR:LIM {},(@{:d})\n'.format(cmpl, ch)
                 config_str += 'VOLT {:.6f},(@{:d})\n'.format(v, ch)
-            elif md =='CC':
+            elif md =='CC':              
                 config_str += 'VOLT:LIM {},(@{:d})\n'.format(cmpl, ch)
                 config_str += 'CURR {:.6f},(@{:d})\n'.format(v, ch)
             else:
