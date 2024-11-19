@@ -141,7 +141,8 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
         if volt_range is not None:
             self.inst.write(":SOUR:VOLT:RANG {:.6e}".format(volt_range))
-            
+        self.inst.write("ARM:SOUR IMM") # Immediately go to Trig layer
+        self.inst.write("TRIG:SOUR IMM") # Immediately trigger
         self.inst.write(":TRIG:COUN 1")         # Set to perform one measurement.
         self.inst.write(":SENS:AVER:TCON REP")   # Set filter to repeating average
         self.inst.write(":SENS:AVER:COUNT %i" % Ncount)   # Set filter to repeating to 10 measurements
@@ -346,8 +347,9 @@ class keithley24XX(sourcemeter):
 #            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
             
         self.inst.write("TRIG:CLE") # Clear any pending triggers
-        self.inst.write("SYST:azer ON") # Ensure auto zero is enabled    
-             
+        self.inst.write("SYST:azer ON") # Ensure auto zero is enabled   
+        
+        self.inst.write(":SYST:RCMode MULTIPLE") # Does the Auto range in the DEL phase, ot affecting the measurement     
         self.inst.write(":SYST:BEEP:STAT 1") # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear 
         self.inst.write(":SYST:RSEN 0")         # Disable four wire measuremnts
@@ -361,7 +363,7 @@ class keithley24XX(sourcemeter):
 #        self.inst.write("trig:coun 10") # Perform # points in sweep
         self.inst.write("trig:sour tlin") # Trigger using Trigger Link
         self.inst.write("trig:dir acc") # Skip first trigger
-        self.inst.write("trig:outp sour") # Output trigger after source "on"
+        self.inst.write("trig:outp del") # Output trigger after source "on"?del
         self.inst.write("trig:inp sens") # Wait for trigger before measure
         self.inst.write("trig:ilin 1") # Input trigger line
         self.inst.write("trig:olin 2") # Output trigger line
@@ -431,15 +433,14 @@ class keithley24XX(sourcemeter):
             raise ValueError(f'Sense ranging type {type(ranging)} not accepted.')
             
             
-    def configure_syncsweep_slave(self, bias_voltage = -5.0, reset = True, Npoints = 1, nplc = 1, source_delay = 0, trig_delay = 0, curr_cmpl = 0.01, ranging = 'AUTO'):
-        
+    def configure_syncsweep_slave(self, bias_voltage = -5.0, reset = True, Npoints = 1, nplc = 1, source_delay = 0, trig_delay = 0, curr_cmpl = 100e-6, ranging = 'AUTO'):
         if reset:
             self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
 #            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
             
         self.inst.write("trig:cle") # Clear any pending triggers
         self.inst.write("syst:azer oN") # Ensure auto zero is enabled
-        self.inst.write("form:elem curr") # Send only current readings to PC
+#        self.inst.write("form:elem curr") # Send only current readings to PC
 #        self.inst.write("sour:cle:auto on") # Automatically turn output ON/OFF
         self.inst.write("sour:cle:auto:mode tco") # Turn off after trigger count
         # The following section configures the Trigger Model for the PD
