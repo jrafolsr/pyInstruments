@@ -21,6 +21,7 @@ class agilentU272xA():
             raise  Exception('Not able to connect with a Agilent U272xA SMU, instead : \n {}'.format(identity))
             
         self.current_range = ['R1uA', 'R10uA', 'R100uA', 'R1mA', 'R10mA', 'R120mA']
+        self.current_range_dict = {'1uA':1e-6, '10uA':10e-6, '100uA':100e-6, '1mA':1e-3, '10mA':10e-3, '120mA':120e-3}
         self.voltage_range = ['R2V', 'R20V']
         
         
@@ -52,9 +53,11 @@ class agilentU272xA():
             
             if md == 'CV':
                 config_str += 'CURR:LIM {},(@{:d})\n'.format(cmpl, ch)
-                config_str += 'VOLT {:.6f},(@{:d})\n'.format(v, ch)
+                config_str += 'VOLT {:.6f},(@{:d})\n'.format(v, ch)#
             elif md =='CC':              
                 config_str += 'VOLT:LIM {},(@{:d})\n'.format(cmpl, ch)
+                # Not sure I need to set this up, but it coes give some weird response when setting CC and low currents, first point is always quite high....
+                config_str += 'CURR:LIM {},(@{:d})\n'.format(self.current_range_dict[crg.replace('R', '')], ch)
                 config_str += 'CURR {:.6f},(@{:d})\n'.format(v, ch)
             else:
                 raise TypeError('The input mode must be "CV" or "CC"')
