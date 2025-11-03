@@ -10,6 +10,7 @@ from . import pid
 from . import instruments
 from . import ivlogger
 from . import ads11X5_logger
+from .timer import Timer
 # # The following ones need to be removed, eventually
 # from . import  global_settings_ivl
 # from . import ivl_setups
