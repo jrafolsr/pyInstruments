@@ -241,7 +241,7 @@ class keithley24XX(sourcemeter):
             Npoints = len(sweep_list)
             t = ''
             for value in sweep_list:
-                t += f'{value:.4f},'
+                t += f'{value:.4e},'
             t = t[0:-1]
             
             self.inst.write(":SOURce:LIST:VOLTage %s" % t)
