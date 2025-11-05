@@ -9,18 +9,26 @@ from time import sleep, monotonic
 from pyInstruments.instruments import keysight34461A, agilentE36XXA # This the module I created
 from pyInstruments.pid import Pid
 import datetime
-from numpy import sqrt, isclose, nan
+from numpy import sqrt, isclose, nan, isnan
 from threading  import Lock
 today = datetime.date.today().strftime("%d%m%Y")
 from pathlib import Path
 from pyInstruments import __file__ as module_folder
+import traceback
 
 tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
 def calc_temperature(R, R0 = 100.0, alpha = 3.9083e-3, beta =  -5.7750e-7):
     """Returns the temperature in °C according to the Standard Class B Pt100/1000, default is Pt100"""
+    discriminant = alpha**2-4 * beta * (1-R / R0)
 
-    return (-alpha + sqrt(alpha**2-4 * beta * (1-R / R0))) / 2 / beta
+    if discriminant < 0.0:
+        print(f'\nWarning! The Pt100 value is off {R:4g} ohm. Defaulting T to NaN.')
+        temperature = nan
+    else:
+        temperature = (-alpha + sqrt(discriminant)) / 2 / beta
+                       
+    return temperature
 
 
 #%%
@@ -124,10 +132,11 @@ class TemperatureController(object):
         pid.clear() # Not really necessary now, but it is a good practice. It resets all the values of the pid.
     
         # Read and write the current temperature
-        self.current_T = calc_temperature(self.mult.read(), self.R0).mean(axis = 0)
-        
+        self.R = self.mult.read().mean(axis = 0)
+        self.current_T = calc_temperature(self.R, self.R0)
         pid.set_setpoint(self.current_T) # Initialize the setpoint to a the current temperature
               
+        safety_counter = 0 
         while self.pid_running:
             try:
                 time1 = monotonic()
@@ -142,8 +151,22 @@ class TemperatureController(object):
                 else:
                     pid.llimit = -1.0 * self.max_poutput
                 
-                T  = calc_temperature(self.mult.read(), self.R0).mean(axis = 0)
-
+                R = self.mult.read().mean(axis = 0)
+                
+                if isnan(R):
+                    print(f'\nWarning, something fishy in the resistance measurement for {safety_counter} time(s)')
+                    safety_counter += 1
+                    if safety_counter > 10:
+                        raise ValueError('\nThe resistance measurement is not workng properly, stopping for safety.')
+                else:
+                    self.R = R
+                    safety_counter = 0
+                
+                T  = calc_temperature(self.R, self.R0)
+                T = self.current_T if isnan(T) else T
+                print(f'\r set T = {self.setpoint}, current T = {round(T,2)}', end ='', flush = True)
+                #print(f'set T = {self.setpoint}, current T = {round(T,2)}')
+                #print(f'set T = {self.setpoint}', end = '\r')
                 # Update the action value to steadily reach the setpoint based on how close is from the final value                       
                 if self.heating:
                     if isclose(T, self.setpoint, 0, 0.5) or (T >= self.setpoint + 0.5):
@@ -157,10 +180,11 @@ class TemperatureController(object):
                         action = pid.update(T, self.setpoint)
                     else:
                         action = pid.update(T, pid.setpoint - self.cooling_ramp/60.0*pid.dt)
-
-                action = abs(action)
-                self.supply.set_volt(action)    
                 
+                action = abs(action)
+                self.supply.set_volt(action)
+#                error = pid.setpoint - pid.value
+                #print(f'action = {action:.4f}, error {error:.4f} V, P = {pid.Kp * error:.4f}')
                 self.current_T = T
                 self.current_action = action
                 self.current_voltage = action
@@ -173,6 +197,9 @@ class TemperatureController(object):
                 # Check the pid status
                 while (monotonic() - time1) < sleeping_time:
                     sleep(0.01)
+                    
+                #sleep(0.5)
+
                 
             except KeyboardInterrupt:
                 print('INFO: Pid program interrupted in a safe way\n')
@@ -180,9 +207,10 @@ class TemperatureController(object):
             
             except Exception as e:
                 # In case of ANY error turn off the source anyway and stop the program while printing the error
-                print(e)
+                print('An error has ocurred in the TemperatureController from task.py\n', e)
+                traceback.print_exc()
                 break
-        
+
         pid.clear()
         self.supply.set_volt(0.0)
         self.supply.outpoff()
