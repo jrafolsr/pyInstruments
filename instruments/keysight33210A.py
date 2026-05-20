@@ -31,14 +31,14 @@ class keysight33210A(sourcemeter):
         self.load = 50
         self.Vmax = 5
         
-    def set_load(self, load = 50):
+    def set_load(self, load = 50, debug = False):
         """Sets the Load of the output it accepts 50 or HIGHz"""
         options = [50, 'INF']
 
         if load in options:
             self.load = load
             
-            print(f'Setting the load to {load}')
+            print(f'Setting the load to {load}') if debug else None
             if isinstance(load, (int, float)):
                 string = f":OUTP:LOAD {load:.0f}"
                 self.Vmax = 5
@@ -61,7 +61,7 @@ class keysight33210A(sourcemeter):
         # print(f'Configuring for: \n\t{string}')
         self.inst.write(string)
         
-    def set_function(self, function):
+    def set_function(self, function,  debug = False):
         """Sets the output waveform function."""
         if function not in self.functions:
             raise ValueError(f"Function '{function}' not available. Options are:\n\t{self.functions}")
@@ -69,13 +69,13 @@ class keysight33210A(sourcemeter):
         func = self.inst.query("FUNC?").strip().upper()
         
         if func == function:
-            print(f'Instrument already configured for {function}')
+            print(f'Instrument already configured for {function}') if debug else None
         else:
             string = f"FUNC {function}"
             self.inst.write(string)
-            print(f'Setting output function to {function}')    
+            print(f'Setting output function to {function}') if debug else None 
         
-    def set_frequency(self, frequency):
+    def set_frequency(self, frequency, debug = False):
         """Sets the output frequency."""
         if isinstance(frequency, str):
             if frequency in ['MIN', 'MAX']:
@@ -88,17 +88,17 @@ class keysight33210A(sourcemeter):
             else:
                 raise ValueError('Frequency out of range!')
         self.inst.write(string)
-
+        print(f'Setting frequency to {frequency:.46} Hz') if debug else None
         
-    def set_amplitude(self, amplitude):
+    def set_amplitude(self, amplitude, debug = False):
         """Sets the output amplitude in the selected voltage unit."""
         if amplitude <= 0:
             raise ValueError('Amplitude must be positive!')
         string = f"VOLT {amplitude:.4f}"
         self.inst.write(string)
-        print(f'Setting amplitude to {amplitude:.4f}')
+        print(f'Setting amplitude to {self.unit} = {amplitude:.4f} V') if debug else None
     
-    def check_load(self):
+    def check_load(self,  debug = False):
         """Checks the output termination and returns (load, Vmax).
         Vmax = 5 V for 50 Ω, 10 V for high impedance (INF/HIGHZ).
         """
@@ -116,11 +116,11 @@ class keysight33210A(sourcemeter):
                 load = None
                 Vmax = 5.0  # default fallback
 
-        print(f"Detected load = {load} → Vmax = {Vmax:.1f} V")
+        print(f"Detected load = {load} → Vmax = {Vmax:.1f} V") if debug else None
         self.load, self.Vmax = load, Vmax
         return load, Vmax
     
-    def set_offset(self, offset):
+    def set_offset(self, offset,  debug = False):
         """Sets the DC offset in volts. It needs to fulfill |Voffset| < Vmax - Vpp/2"""
         # Get current amplitude in Vpp, Update load and Vmax, just in case
         load, Vmax = self.check_load()
@@ -140,10 +140,10 @@ class keysight33210A(sourcemeter):
 
         # Apply safely
         self.inst.write(f"VOLT:OFFS {offset:.4f}V")
-        print(f'Setting offset to {offset:.4f} V (limit OK)')
+        print(f'Setting offset to {offset:.4f} V (limit OK)') if debug else None
 
         
-    def set_duty_cycle(self, duty):
+    def set_duty_cycle(self, duty, debug = False):
         """Sets the duty cycle for square waves (20%–80%)."""
         if not (20 <= duty <= 80):
             raise ValueError('Duty cycle must be between 20% and 80%.')
@@ -154,9 +154,9 @@ class keysight33210A(sourcemeter):
         
         string = f"FUNC:SQU:DCYC {duty:.0f}"
         self.inst.write(string)
-        print(f'Setting duty cycle to {duty:.0f} %')
+        print(f'Setting duty cycle to {duty:.0f} %') if debug else None
     
-    def set_dc_voltage(self, voltage):
+    def set_dc_voltage(self, voltage, debug = False):
         """Sets a DC output voltage (uses the DC function)."""
         # Voltage range can typically be -5 V to +5 V (for 50 Ω load),
         # but you can adapt based on your instrument setup.
@@ -166,7 +166,7 @@ class keysight33210A(sourcemeter):
         # Select DC mode and set offset voltage
         self.inst.write("FUNC DC")
         self.inst.write(f"VOLT:OFFS {voltage:.4f}V")
-        print(f'Setting DC output to {voltage:.4f} V')    
+        print(f'Setting DC output to {voltage:.4f} V') if debug else None
 
     def outpoff(self):
         """Turns off the instrument."""

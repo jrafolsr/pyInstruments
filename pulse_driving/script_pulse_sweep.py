@@ -14,9 +14,9 @@ from pathlib import Path
 from pyInstruments import list_resources
 
 resources = list_resources()
-resource = resources[0] if len(resources) else None
+resource = resources[2j] if len(resources) else None
 #%%
-if not 'GPIB' in resource:
+if not 'GPIB0::20' in resource:
     raise ValueError('THe resource is not a GPIB one!')
 
 print(f'Connecting to resource: {resource}')
@@ -30,11 +30,11 @@ try:
     
     duty_cycles = [100] +np.round(np.arange(80, 30, -10), 0).tolist()
     
-    duty_cycles = [80, 40]*5
+    duty_cycles = [100, 80, 40]*5
     # Calculate the amplitude if I want to keep the Vavg fixed!
     function = 'SQU'
     frequency = 50
-    Vavg = 3
+    Vavg = 4
     Vmax = 10
     time_per_duty = 20
     

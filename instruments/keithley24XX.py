@@ -122,7 +122,7 @@ class keithley24XX(sourcemeter):
         
     def mode_vfix_configure(self,term = 'FRONT', fw = False, cmpl = 0.05, beeper = True, aver = True,\
                             Ncount = 10, nplc = 1, sens = True,\
-                            volt_range = None, reset = True):
+                            volt_range = None, reset = True, sens_curr_ranging='AUTO'):
         """Configures the 2400 to deliver a fix voltage and that's it for the moment" 
         Optional arguments:
             - term = 'FRONT': The default terminal is FRONT. REAR can also be passed.
@@ -148,13 +148,39 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SENS:AVER:COUNT %i" % Ncount)   # Set filter to repeating to 10 measurements
         self.inst.write(":SENS:AVER:STATE %i" % aver)  # Enable fiLter
         self.inst.write(":SENS:CURR:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
-        self.inst.write(":SENS:CURR:RANG:AUTO ON")  # Auto range ON
+#        self.inst.write(":SENS:CURR:RANG:AUTO ON")  # Auto range ON
         self.inst.write(":SENS:CURR:PROT:LEV %.3g" % cmpl)    # Set the compliance limit.
+        
+        if isinstance(sens_curr_ranging, str):
+            if sens_curr_ranging.lower() == 'AUTO':
+                self.inst.write(":SENSe:CURRent:RANGe:AUTO ON")
+        elif isinstance(sens_curr_ranging, (int, float)):
+            self.inst.write(":SENSe:CURRent:RANGe:AUTO OFF")
+            if sens_curr_ranging >= cmpl:
+                print('INFO: The compliance is increased to match the SENSe range')
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3e" % sens_curr_ranging)
+            self.inst.write(":SENSe:CURRent:RANGe %.6e" % sens_curr_ranging)
+        else:
+            raise ValueError(f'Sense sens_curr_ranging type {type(sens_curr_ranging)} not accepted.')
+        
         
         if not sens:
             print('All sens function have been turned off')
             self.inst.write(":SENS:FUNC:OFF:ALL")
-        
+    def update_sensing_current_range(self, value):
+        cmpl = self.inst.query_ascii_values(":SENS:CURR:PROT:LEV?")[0]
+        if isinstance(value, str):
+            if value.lower() == 'AUTO':
+                self.inst.write(":SENSe:CURRent:RANGe:AUTO ON")
+        elif isinstance(value, (int, float)):
+            self.inst.write(":SENSe:CURRent:RANGe:AUTO OFF")
+            if value >= cmpl:
+                print('INFO: The compliance is increased to match the SENSe range')
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3e" % value)
+            self.inst.write(":SENSe:CURRent:RANGe %.6e" % value)
+        else:
+            raise ValueError(f'Sense value type {type(value)} not accepted.')
+    
     def mode_vfix_setvolt(self,volt):
         """ Sends the order to the sourcemeter to set the voltage 'volt' in V."""
         self.inst.write(":SOUR:VOLT %.6f" % volt)
