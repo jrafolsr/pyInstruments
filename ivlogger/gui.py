@@ -23,7 +23,7 @@ import getopt
 import sys
 from pathlib import Path
 from pyvisa import ResourceManager
-
+import numpy as np
 
 calc_status = lambda x:  bool(abs(int((1j**x).real)))
 
@@ -117,10 +117,19 @@ app.layout = html.Div(children =  [
                 ),
              daq.BooleanSwitch(
                   id='term-switch',
-                  label = 'REAR',
-                  on = True,
+                  label = 'FRONT',
+                  on = False,
                   disabled = False,
                 ),
+             daq.PrecisionInput(
+                 id='running-time-input',
+                 label = 'Runtime is inf s',
+                 precision = 4,
+                 min = -1,
+                 max = 1e20,
+                 value = -1,
+                 size = 100,
+                 ),
              html.P('Timestep control'),
              dcc.RadioItems(id = 'time-selection',
                    options=[
@@ -249,10 +258,11 @@ def update_graph_live(n, n_clear,figure):
                [State('power-button', 'on'),
                 State('value-input', 'value'),
                 State('config-switch', 'on'),
+                State('running-time-input', 'value'),
                 State('time-selection', 'value'),
                 State('time-input', 'value')],
                 prevent_initial_call = True)
-def start_measurement(N, on, value, config_flag, time_mode, time_step):
+def start_measurement(N, on, value, config_flag,running_time, time_mode, time_step):
     color = ["#00cc96", '#FF6633']
     label = 'Start'
     
@@ -261,13 +271,15 @@ def start_measurement(N, on, value, config_flag, time_mode, time_step):
     
     status = calc_status(N + 1) and on
     
+    runtime = running_time if running_time>= 0 else np.inf
+    
     try:
         if status is True:
             dt_fix = False if time_mode == 'auto' else True
             
             print('INFO: Measurement started...')
-            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix))
-            print(dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix))
+            thread = Thread(target = t.run, args = (value,), kwargs = dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix, runtime = runtime))
+            # print(dict(interrupt_measurement = not config_flag, dt = time_step, dt_fix = dt_fix))
             thread.daemon = True
             thread.start()
             label = 'Stop'
@@ -388,7 +400,12 @@ def set_nplc(value):
     t.configuration['nplc'] = value
     return ['NPLC']
 
-
+@app.callback([Output('running-time-input', 'label')],
+              [Input('running-time-input', 'value')])
+def set_runtime(value):
+    runtime  =  np.inf if value < 0 else value
+    label =  f'Runtime is {runtime:.1f} s'
+    return [label]
 #
         
 @app.callback([Output('resource-dropdown', 'value'),
