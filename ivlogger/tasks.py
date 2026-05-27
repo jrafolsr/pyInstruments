@@ -22,8 +22,10 @@ tempfile = Path(module_folder).parent / Path('temp/temp.dat')
 
 def dt_calc(etime):
     """Returns an interval of time that increased as the ellapsed time etime increases"""
-    if etime <= 10:
-        return 0.25
+    if etime <= 30:
+        return 0.05
+#    elif etime <= 10:
+#        return 0.25
     elif etime <= 60:
         return 0.5
     elif etime <= 120:
