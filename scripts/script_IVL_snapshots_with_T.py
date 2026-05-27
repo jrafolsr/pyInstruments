@@ -27,14 +27,15 @@ from threading import Thread
 import numpy as np
 import shutil
 
+#%%
 
 # =============================================================================
 # Experiment configuration
 # =============================================================================
 
 # --- Output folder / file id ------------------------------------------------
-folder = Path('/home/pi/Documents/data/Sri')
-file_id = '22-SP02-04b_Tswing'
+folder = Path(r'C:\Users\JOANRR\OneDrive - Umeå universitet\Documents\25_snaphsots\temperature')
+file_id = 'Li_Thushar_01'
 
 # --- LEC bias staircase -----------------------------------------------------
 mode = 'CV'                              # 'CV' only, for now
@@ -45,34 +46,34 @@ if staircase_downscan:
     list_voltages = list_voltages + list_voltages[-2::-1]
 
 # --- Temperature swing ------------------------------------------------------
-T1 = 25.0       # Holding / driving temperature in deg C
-T2 = 60.0       # Snapshot temperature in deg C (where the sweep is taken)
-T_park = 25.0   # Safe parking temperature at the very end of the script
+T1 = 30.0       # Holding / driving temperature in deg C
+T2 = 5.0       # Snapshot temperature in deg C (where the sweep is taken)
+T_park = 20.0   # Safe parking temperature at the very end of the script
 
 # Thermal stabilization criterion: |T - setpoint| < T_tol for T_hold_time
 # consecutive seconds. Hard timeout T_max_wait stops the wait either way.
 T_tol = 0.3                 # deg C
 T_hold_time = 30.0          # s of being within tol before we declare "stable"
-T_max_wait = 30 * 60.0      # s, hard timeout per ramp
+T_max_wait = 10 * 60.0      # s, hard timeout per ramp
 T_poll_dt = 0.5             # s, how often we poll current_T
 
 # --- Rate condition at T1 (same idea as the original script) ----------------
 rate_condition = 1e-5       # 1/s for CV mode (dj/dt / j)
-min_time_per_voltage_step = 60.0    # s, min hold at V_bia /T1 before T2 ramp
-max_time_per_voltage_step = 2 * 3600.0   # s, hard cap on the wait at T1
+min_time_per_voltage_step = 120.0    # s, min hold at V_bia /T1 before T2 ramp
+max_time_per_voltage_step = 45*60   # s, hard cap on the wait at T1
 
 # --- Optional pre-bias ------------------------------------------------------
 run_prebias        = True
 mode_prebias       = 'CC'
 bias_prebias_input = 0.4              # mA if CC, V if CV
-max_time_prebias   = 5.5 * 3600.0
-min_time_prebias   = 300.0
-condition_prebias  = 0.2              # mV/min if CC, 1/s if CV
+max_time_prebias   = 30*60
+min_time_prebias   = 300
+condition_prebias  = 1              # mV/min if CC, 1/s if CV
 
 bias_prebias = bias_prebias_input if mode_prebias == 'CV' else bias_prebias_input / 1000.0
 
 # --- After-sweep recovery time (LEC at V_bias, T back to T1) ----------------
-time_after_sweep = 180.0    # s; on top of waiting for T to reach T1
+time_after_sweep = 60.0    # s; on top of waiting for T to reach T1
 
 # --- I-V sweep parameters ---------------------------------------------------
 Vstart = 0.0
@@ -104,14 +105,14 @@ if sweep_downscan:
 resource_led = 'GPIB0::25::INSTR'
 resource_pd  = 'GPIB0::26::INSTR'
 resource_dmm = 'GPIB0::23::INSTR'    # Pt100 readout
-resource_tec = 'GPIB0::24::INSTR'    # Keithley 24XX driving the Peltier
+resource_tec = 'GPIB0::5::INSTR'    # Keithley 24XX driving the Peltier
 
 pd_bias = -5.0
 
 # --- Temperature controller config -----------------------------------------
 tc_kwargs = dict(
     setpoint=T1,
-    max_poutput=4.00,
+    max_poutput=2.00,
     current_compliance=1.2,
     multimeter_addr=resource_dmm,
     sourcemeter_addr=resource_tec,
@@ -400,10 +401,10 @@ m.pd_outpoff()
 # Ramp temperature back to a safe parking point before killing the PID.
 # CHANGED: don't just pid_off() immediately -- that would cut the Peltier
 # drive and let the stage drift uncontrolled. Ramp to T_park first.
-print(f'Ramping temperature to park point T_park={T_park:.2f} C before '
-      f'shutting down PID')
-tc.set_setpoint(T_park)
-wait_for_temperature(tc, T_park, max_wait=10 * 60.0)
+# print(f'Ramping temperature to park point T_park={T_park:.2f} C before '
+#       f'shutting down PID')
+# tc.set_setpoint(T_park)
+# wait_for_temperature(tc, T_park, max_wait=10 * 60.0)
 tc.pid_off()
 pid_thread.join(timeout=5.0)
 if pid_thread.is_alive():

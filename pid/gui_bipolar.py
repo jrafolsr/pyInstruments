@@ -353,7 +353,7 @@ if __name__ == '__main__':
                 else:
                     user_reloader = False
 
-        app.run_server(debug = debug, port = port, use_reloader = user_reloader)
+        app.run(debug = debug, port = port, use_reloader = user_reloader)
     except KeyboardInterrupt:
         print("Program terminated.")
     except Exception as e:
