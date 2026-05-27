@@ -203,6 +203,9 @@ class keithley24XX(sourcemeter):
     def check_curr_compliance(self):
         return bool(self.inst.query_ascii_values(':CURRent:PROTection:TRIPped?')[0])
     
+    def set_current_compliance(self, value):
+        self.inst.write(":SENS:CURR:PROT:LEV %.3g" % value)    # Set the compliance limit.
+
     def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN', reset = True, stay_on = False, source_range = 'BEST'):
         """
         Configures the Keithley to perform a voltage sweep

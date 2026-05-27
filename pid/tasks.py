@@ -233,6 +233,136 @@ class TemperatureController(object):
         
         self.setpoint= value 
 
+class TemperatureControllerBipolar(object):
+    def __init__(self):
+        self.setpoint = nan
+        self.current_T = nan
+        self.lock = Lock()
+        self.log_file = tempfile
+        self.heating_ramp = 20    # K/min, used when current_T < setpoint
+        self.cooling_ramp = 60    # K/min, used when current_T > setpoint
 
+    # CHANGED: removed `heating` argument -- direction is now decided per-step
+    # by the sign of (setpoint - T). Added current_limit since both channels
+    # need explicit limits in bipolar mode.
+    def configurate(self, setpoint=20.0, max_poutput=6.00, current_limit=1.2,
+                    multimeter_addr='GPIB0::23::INSTR',
+                    sourcemeter_addr='GPIB0::5::INSTR',
+                    R0=100):
+        """
+        Parameters
+        ----------
+        setpoint : float
+            Target temperature in °C.
+        max_poutput : float
+            Maximum |voltage| applied to the Peltier, in volts. Symmetric.
+        current_limit : float
+            Current limit (A) on each ±25V channel. Peltier needs ~1 A.
+        """
+        self.setpoint = setpoint
+        self.pid_running = False
+        self.max_poutput = max_poutput
+        self.R0 = R0
+
+        self.mult = keysight34461A(multimeter_addr)
+        self.supply = agilentE36XXA(sourcemeter_addr)
+
+        if R0 == 100:
+            self.mult.config_ohms(rang=1000, nplc=1, count=5)
+        else:
+            self.mult.config_ohms(rang=10000, nplc=1, count=5)
+
+        # CHANGED: symmetric limits. No more pmin/pmax tied to a heating flag.
+        self.pmin = -1.0 * self.max_poutput
+        self.pmax = +1.0 * self.max_poutput
+
+        # CHANGED: bipolar configuration of the supply
+        self.supply.config_bipolar(voltage=0.0, current_limit_p6v=current_limit,current_limit_p25v=current_limit)
+
+    def run(self, sleeping_time=0.5):
+        Kp = 1.0
+        Ki = 0.05
+        Kd = 0.0
+        pid = Pid(Kp, Ki, Kd, ulimit=self.pmax, llimit=self.pmin)
+        pid.clear()
+
+        self.current_T = calc_temperature(self.mult.read(), self.R0).mean(axis=0)
+        pid.set_setpoint(self.current_T)
+
+        while self.pid_running:
+            try:
+                time1 = monotonic()
+
+                # CHANGED: use bipolar output-state check / enable
+                if not self.supply.outpstate_bipolar():
+                    print('INFO: Turning on the Power supply (bipolar)')
+                    self.supply.outpon_bipolar()
+
+                # Keep the PID limits in sync with the user-visible max_poutput
+                pid.ulimit = +1.0 * self.max_poutput
+                pid.llimit = -1.0 * self.max_poutput
+
+                T = calc_temperature(self.mult.read(), self.R0).mean(axis=0)
+
+                # CHANGED: ramp direction now dispatched on (setpoint - T),
+                # not on a global heating/cooling flag. This means the controller
+                # naturally handles "user changed the setpoint downward mid-run".
+                error = self.setpoint - T
+                if isclose(T, self.setpoint, 0, 0.5):
+                    # Close enough -- use the real setpoint
+                    action = pid.update(T, self.setpoint)
+                elif error > 0:
+                    # Need to heat: ramp the intermediate setpoint upward
+                    action = pid.update(T, pid.setpoint + self.heating_ramp / 60.0 * pid.dt)
+                else:
+                    # Need to cool: ramp the intermediate setpoint downward
+                    action = pid.update(T, pid.setpoint - self.cooling_ramp / 60.0 * pid.dt)
+
+                # CHANGED: signed action goes straight to the supply. No abs().
+                self.supply.set_volt_bipolar(action)
+
+                self.current_T = T
+                self.current_action = action
+                self.current_voltage = action                      # now signed
+                self.current_intensity = self.supply.read_value_bipolar(value='curr')
+
+                with self.lock:
+                    with open(self.log_file, 'w') as f:
+                        f.write(f'{T:5.2f}')
+
+                while (monotonic() - time1) < sleeping_time:
+                    sleep(0.01)
+
+            except KeyboardInterrupt:
+                print('INFO: Pid program interrupted in a safe way\n')
+                break
+            except Exception as e:
+                print(e)
+                break
+
+        pid.clear()
+        # CHANGED: bring both rails to zero, then disable
+        self.supply.set_volt_bipolar(0.0)
+        self.supply.outpoff_bipolar()
+        return None
+
+    def pid_on(self):
+        self.pid_running = True
+
+    def pid_off(self):
+        self.pid_running = False
+        with self.lock:
+            with open(self.log_file, 'w') as f:
+                f.write('nan')
+
+    def set_setpoint(self, value, min_value=-20, max_value=100):
+        if value > max_value:
+            value = max_value
+            print(f'INFO: Temperature beyond the established limits of {min_value:.2f} and {max_value:.2f} °C\n')
+        elif value < min_value:
+            value = min_value
+            print(f'INFO: Temperature beyond the established limits of {min_value:.2f} and {max_value:.2f} °C\n')
+        self.setpoint = value
+        
 if __name__ == '__main__':
     print('Functions for the pid loaded \n')

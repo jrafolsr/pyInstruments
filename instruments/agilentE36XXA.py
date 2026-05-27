@@ -77,3 +77,86 @@ class agilentE36XXA(sourcemeter):
             raise Exception('Specified value not known')
         return self.reading[0]
     
+    
+    def config_bipolar(self, voltage=0.0, current_limit_p6v=1.0, current_limit_p25v=1.0):
+        """Configure P6V and P25V channels for bipolar Peltier drive via bridge wiring.
+    
+        E3631A wiring (do this ONCE on the bench, then leave it):
+            P6V(–) ──── tied to ──── P25V(–)     <- floating midpoint;
+                                                     MUST NOT be connected to
+                                                     chassis, earth, or any
+                                                     external ground.
+            Peltier sits between P6V(+) and P25V(+).
+    
+        Operation:
+            voltage > 0  -> P6V at |V|, P25V at 0
+                            -> current from P6V(+) to P25V(+)
+            voltage < 0  -> P6V at 0,   P25V at |V|
+                            -> current from P25V(+) to P6V(+)
+    
+        On the E3631A, OUTP enables/disables all three channels together; there
+        is no per-channel enable. The -25V channel is left at its *RST default
+        (0 V, 1 A limit) and is not used by the bridge.
+    
+        Current limits are per-channel because the two channels have different
+        ratings (P6V: 5 A; P25V: 1 A).
+        """
+        if self.model != 'triple':
+            raise Exception('Bipolar mode requires the triple-output E3631A.')
+        self.inst.write('*RST')
+        self.inst.write('INST:SEL P6V')
+        self.inst.write(f'SOUR:CURR {current_limit_p6v:.4f}')
+        self.inst.write('SOUR:VOLT 0')
+        self.inst.write('INST:SEL P25V')
+        self.inst.write(f'SOUR:CURR {current_limit_p25v:.4f}')
+        self.inst.write('SOUR:VOLT 0')
+        self.output = 'bipolar'
+        self.set_volt_bipolar(voltage)
+
+    def set_volt_bipolar(self, voltage):
+        """Apply a signed voltage to the Peltier via the P6V/P25V bridge.
+    
+        Always parks the inactive channel at exactly 0 V before raising the
+        active one, so the two supplies never fight each other through zero.
+        """
+        if voltage >= 0:
+            # Park P25V, then drive P6V
+            self.inst.write('INST:SEL P25V')
+            self.inst.write('SOUR:VOLT 0')
+            self.inst.write('INST:SEL P6V')
+            self.inst.write(f'SOUR:VOLT {voltage:.4f}')
+        else:
+            # Park P6V, then drive P25V
+            self.inst.write('INST:SEL P6V')
+            self.inst.write('SOUR:VOLT 0')
+            self.inst.write('INST:SEL P25V')
+            self.inst.write(f'SOUR:VOLT {abs(voltage):.4f}')
+    
+    def outpon_bipolar(self):
+        """Enable outputs. On the E3631A this enables all three channels."""
+        self.inst.write('OUTP ON')
+    
+    def outpoff_bipolar(self):
+        """Disable outputs."""
+        self.inst.write('OUTP OFF')
+    
+    def outpstate_bipolar(self):
+        """Return True if outputs are enabled. Same as outpstate() on E3631A."""
+        return bool(self.inst.query_ascii_values('OUTP?')[0])
+    
+    def read_value_bipolar(self, value='volt'):
+        """Read signed voltage or current across the Peltier.
+    
+        Returns positive when P6V drives, negative when P25V drives.
+        """
+        if value == 'volt':
+            v_p6 = self.inst.query_ascii_values('MEAS:VOLT? P6V')[0]
+            v_p25 = self.inst.query_ascii_values('MEAS:VOLT? P25V')[0]
+            return v_p6 - v_p25
+        elif value == 'curr':
+            i_p6 = self.inst.query_ascii_values('MEAS:CURR? P6V')[0]
+            i_p25 = self.inst.query_ascii_values('MEAS:CURR? P25V')[0]
+            # The active channel carries the meaningful current
+            return i_p6 if abs(i_p6) > abs(i_p25) else -i_p25
+        else:
+            raise Exception('Specified value not known')
