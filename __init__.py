@@ -4,12 +4,14 @@ Created on Fri Nov 29 16:38:13 2019
 
 @author: JOANRR
 """
-
+from .timer import Timer
 from .resources import sourcemeter, list_resources
 from . import pid
 from . import instruments
 from . import ivlogger
 from . import ads11X5_logger
+from . import ivl_snapshots
+
 # # The following ones need to be removed, eventually
 # from . import  global_settings_ivl
 # from . import ivl_setups

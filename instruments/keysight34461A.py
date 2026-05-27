@@ -5,7 +5,8 @@ Created on Fri Nov 29 16:50:51 2019
 @author: JOANRR
 """
 from ..resources import sourcemeter
-from numpy import array
+from numpy import array, nan
+import traceback
 
 class keysight34461A(sourcemeter):
     """This class uses the sourcemeter class to open a resource instance for a multimeter
@@ -40,7 +41,12 @@ class keysight34461A(sourcemeter):
     def read(self):
         """Reads the configurated value, it could but more general, but it isn't right now
         it returns a list"""
-        self.reading =  self.inst.query_ascii_values('READ?', container=array)
+        try:
+            self.reading =  self.inst.query_ascii_values('READ?', container=array)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            self.reading = nan
         return self.reading
     def config_volt(self,rang = 0.1, nplc = 1, count = 1):
         """Configures the instrument for a DC voltage reading:

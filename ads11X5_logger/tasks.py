@@ -9,6 +9,7 @@ Created on Fri Jan 14 10:14:38 2022
 import time
 import os
 import warnings
+from numpy import nan
 
 if os.name == 'nt':
     warnings.warn('Windows system, the modules for the adafruit will not be imported. ADS11X5_logger cannot be used.')
@@ -59,6 +60,7 @@ class ADS11x5Logger():
         self.internal_delay = 0.001 # Delay qhen adquiring voltage values between channels in s
         self.values = [None] * len(self.channels)
         self.bits = [None] * len(self.channels)
+        self.out_of_range = [False] * len(self.channels)
         
     def configure_channels(self, channels_config = [('diff', (0,1))]):
         
@@ -86,15 +88,19 @@ class ADS11x5Logger():
                     self.values[i] = c.voltage
                     time.sleep(self.internal_delay)
 #                self.values = [c.voltage for c in self.channels]
-                # Calculate the vits from the voltage, it makes more sense to do otherwise, but I don't want another reading, I want to use the same
+                # Calculate the bits from the voltage, it makes more sense to do otherwise, but I don't want another reading, I want to use the same
                 self.bits = [int(v * BITS_MAX / _ADS1X15_PGA_RANGE[self.ads.gain]) for v in self.values]
                 
                 if show_print:
                     _temp = []
+                    _hit_upper_range = []
                     # Updated to show which percentage of the range are we using
                     for v, b in zip(self.values, self.bits):
                         _temp.append(v)
-                        _temp.append(b / BITS_MAX *100)
+                        percentage = b / BITS_MAX *100
+                        _temp.append(percentage)
+                        _hit_upper_range.append(True if round(percentage, 2) >= 99.8 else False)
+                    self.out_of_range = _hit_upper_range
                         
                     print(('\r ' + "{:^8.5f} ({:> 5.1f}%)\t" * len(self.channels)).format(*_temp), end ='' )
                 

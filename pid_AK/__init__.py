@@ -6,4 +6,3 @@ Created on Thu Jul 23 10:43:16 2020
 """
 from .pid_class import Pid
 from .tasks import TemperatureController
-from .tasks_bipolar import TemperatureControllerBipolar

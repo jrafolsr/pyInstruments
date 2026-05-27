@@ -122,7 +122,7 @@ class keithley24XX(sourcemeter):
         
     def mode_vfix_configure(self,term = 'FRONT', fw = False, cmpl = 0.05, beeper = True, aver = True,\
                             Ncount = 10, nplc = 1, sens = True,\
-                            volt_range = None, reset = True):
+                            volt_range = None, reset = True, sens_curr_ranging='AUTO'):
         """Configures the 2400 to deliver a fix voltage and that's it for the moment" 
         Optional arguments:
             - term = 'FRONT': The default terminal is FRONT. REAR can also be passed.
@@ -141,19 +141,46 @@ class keithley24XX(sourcemeter):
         self.inst.write(":SOUR:CLE:AUTO OFF")     # Enable source auto output-off.
         if volt_range is not None:
             self.inst.write(":SOUR:VOLT:RANG {:.6e}".format(volt_range))
-            
+        self.inst.write("ARM:SOUR IMM") # Immediately go to Trig layer
+        self.inst.write("TRIG:SOUR IMM") # Immediately trigger
         self.inst.write(":TRIG:COUN 1")         # Set to perform one measurement.
         self.inst.write(":SENS:AVER:TCON REP")   # Set filter to repeating average
         self.inst.write(":SENS:AVER:COUNT %i" % Ncount)   # Set filter to repeating to 10 measurements
         self.inst.write(":SENS:AVER:STATE %i" % aver)  # Enable fiLter
         self.inst.write(":SENS:CURR:NPLC %.3f" % nplc)      # Set measurement speed to 1 PLC.
-        self.inst.write(":SENS:CURR:RANG:AUTO ON")  # Auto range ON
+#        self.inst.write(":SENS:CURR:RANG:AUTO ON")  # Auto range ON
         self.inst.write(":SENS:CURR:PROT:LEV %.3g" % cmpl)    # Set the compliance limit.
+        
+        if isinstance(sens_curr_ranging, str):
+            if sens_curr_ranging.lower() == 'AUTO':
+                self.inst.write(":SENSe:CURRent:RANGe:AUTO ON")
+        elif isinstance(sens_curr_ranging, (int, float)):
+            self.inst.write(":SENSe:CURRent:RANGe:AUTO OFF")
+            if sens_curr_ranging >= cmpl:
+                print('INFO: The compliance is increased to match the SENSe range')
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3e" % sens_curr_ranging)
+            self.inst.write(":SENSe:CURRent:RANGe %.6e" % sens_curr_ranging)
+        else:
+            raise ValueError(f'Sense sens_curr_ranging type {type(sens_curr_ranging)} not accepted.')
+        
         
         if not sens:
             print('All sens function have been turned off')
             self.inst.write(":SENS:FUNC:OFF:ALL")
-        
+    def update_sensing_current_range(self, value):
+        cmpl = self.inst.query_ascii_values(":SENS:CURR:PROT:LEV?")[0]
+        if isinstance(value, str):
+            if value.lower() == 'AUTO':
+                self.inst.write(":SENSe:CURRent:RANGe:AUTO ON")
+        elif isinstance(value, (int, float)):
+            self.inst.write(":SENSe:CURRent:RANGe:AUTO OFF")
+            if value >= cmpl:
+                print('INFO: The compliance is increased to match the SENSe range')
+                self.inst.write(":SENSe:CURR:PROT:LEV %.3e" % value)
+            self.inst.write(":SENSe:CURRent:RANGe %.6e" % value)
+        else:
+            raise ValueError(f'Sense value type {type(value)} not accepted.')
+    
     def mode_vfix_setvolt(self,volt):
         """ Sends the order to the sourcemeter to set the voltage 'volt' in V."""
         self.inst.write(":SOUR:VOLT %.6f" % volt)
@@ -176,6 +203,9 @@ class keithley24XX(sourcemeter):
     def check_curr_compliance(self):
         return bool(self.inst.query_ascii_values(':CURRent:PROTection:TRIPped?')[0])
     
+    def set_current_compliance(self, value):
+        self.inst.write(":SENS:CURR:PROT:LEV %.3g" % value)    # Set the compliance limit.
+
     def mode_Vsweep_config(self,start, stop, step = 0.1, mode = 'step', sweep_list = [], term = 'FRONT', cmpl = 0.1, delay = 0.1, ranging = 'AUTO', nplc = 1, spacing = 'LIN', reset = True, stay_on = False, source_range = 'BEST'):
         """
         Configures the Keithley to perform a voltage sweep
@@ -241,7 +271,7 @@ class keithley24XX(sourcemeter):
             Npoints = len(sweep_list)
             t = ''
             for value in sweep_list:
-                t += f'{value:.4f},'
+                t += f'{value:.4e},'
             t = t[0:-1]
             
             self.inst.write(":SOURce:LIST:VOLTage %s" % t)
@@ -346,8 +376,9 @@ class keithley24XX(sourcemeter):
 #            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
             
         self.inst.write("TRIG:CLE") # Clear any pending triggers
-        self.inst.write("SYST:azer ON") # Ensure auto zero is enabled    
-             
+        self.inst.write("SYST:azer ON") # Ensure auto zero is enabled   
+        
+        self.inst.write(":SYST:RCMode MULTIPLE") # Does the Auto range in the DEL phase, ot affecting the measurement     
         self.inst.write(":SYST:BEEP:STAT 1") # Turn on/off the beeper
         self.inst.write(":ROUT:TERM %s" % term)     # Set the route to term front/rear 
         self.inst.write(":SYST:RSEN 0")         # Disable four wire measuremnts
@@ -361,7 +392,7 @@ class keithley24XX(sourcemeter):
 #        self.inst.write("trig:coun 10") # Perform # points in sweep
         self.inst.write("trig:sour tlin") # Trigger using Trigger Link
         self.inst.write("trig:dir acc") # Skip first trigger
-        self.inst.write("trig:outp sour") # Output trigger after source "on"
+        self.inst.write("trig:outp del") # Output trigger after source "on"?del
         self.inst.write("trig:inp sens") # Wait for trigger before measure
         self.inst.write("trig:ilin 1") # Input trigger line
         self.inst.write("trig:olin 2") # Output trigger line
@@ -431,15 +462,14 @@ class keithley24XX(sourcemeter):
             raise ValueError(f'Sense ranging type {type(ranging)} not accepted.')
             
             
-    def configure_syncsweep_slave(self, bias_voltage = -5.0, reset = True, Npoints = 1, nplc = 1, source_delay = 0, trig_delay = 0, curr_cmpl = 0.01, ranging = 'AUTO'):
-        
+    def configure_syncsweep_slave(self, bias_voltage = -5.0, reset = True, Npoints = 1, nplc = 1, source_delay = 0, trig_delay = 0, curr_cmpl = 100e-6, ranging = 'AUTO'):
         if reset:
             self.inst.write("*RST")                  # Reset instrument to default parameters if reset flag is True.
 #            self.inst.write(":SYSTem:TIME:RESet")   # Reset the time of the sourcemeter
             
         self.inst.write("trig:cle") # Clear any pending triggers
         self.inst.write("syst:azer oN") # Ensure auto zero is enabled
-        self.inst.write("form:elem curr") # Send only current readings to PC
+#        self.inst.write("form:elem curr") # Send only current readings to PC
 #        self.inst.write("sour:cle:auto on") # Automatically turn output ON/OFF
         self.inst.write("sour:cle:auto:mode tco") # Turn off after trigger count
         # The following section configures the Trigger Model for the PD
