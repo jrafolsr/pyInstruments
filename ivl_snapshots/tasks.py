@@ -39,11 +39,14 @@ def dt_calc(etime):
 # New class
 
 class SweepMyLEC():
-    def __init__(self, resource, resource_pd, output_folder = 'sweep-my-lec'):
+    def __init__(self, resource, resource_pd = None, output_folder = 'sweep-my-lec'):
         
         self.device = keithley24XX(resource)
         
-        self.photodiode = keithley24XX(resource_pd)
+        # CHANGED: photodiode is now optional. Pass resource_pd=None on rigs that
+        # have no photodiode SMU (e.g. the gonio rig, where light is measured
+        # with the spectrometer). All pd_* methods and the logger guard on this.
+        self.photodiode = keithley24XX(resource_pd) if resource_pd is not None else None
         
         self.set_output_folder(output_folder)
         
@@ -73,20 +76,32 @@ class SweepMyLEC():
         self.mode = None
         
     def pd_config(self, reverse_bias =  -5.0, **kwargs):
+        # CHANGED: no-op when there is no photodiode.
+        if self.photodiode is None:
+            return
         self.photodiode.mode_vfix_configure(**kwargs)
         self.photodiode.mode_vfix_setvolt(reverse_bias)
     
     
     def pd_read(self):
+        # CHANGED: return NaN when there is no photodiode.
+        if self.photodiode is None:
+            return np.nan
         return self.photodiode.read()[1]
     
     def pd_outpon(self):
+        if self.photodiode is None:   # CHANGED
+            return
         self.photodiode.outpon()
     
     def pd_outpoff(self):
+        if self.photodiode is None:   # CHANGED
+            return
         self.photodiode.outpoff()
         
     def pd_reset_instrument(self):
+        if self.photodiode is None:   # CHANGED
+            return
         self.photodiode.reset()
         
         
@@ -196,7 +211,9 @@ class SweepMyLEC():
         self.sub_timer.initialize()
         
         self.device.outpon() if not self.device.outpstate() else None
-        self.photodiode.outpon() if not self.photodiode.outpstate() else None
+        # CHANGED: only touch the photodiode if there is one.
+        if self.photodiode is not None:
+            self.photodiode.outpon() if not self.photodiode.outpstate() else None
         
         
 #        old_setpoint = self.bias_setpoint
@@ -286,8 +303,13 @@ class SweepMyLEC():
 #        self.device.outpoff() 
 #        self.photodiode.outpoff()
                 
-    def run_logger_thread(self, filename = 'logger.dat'):
-        self.thread = Thread(target = self.run_logger,kwargs = dict(filename = filename))
+    def run_logger_thread(self, filename = 'logger.dat', save_temperature = True):
+        # CHANGED: forward save_temperature so rigs without a temp.dat writer
+        # (e.g. the gonio rig) can disable the temperature read that otherwise
+        # throws FileNotFoundError inside the logger thread and kills it.
+        self.thread = Thread(target = self.run_logger,
+                             kwargs = dict(filename = filename,
+                                           save_temperature = save_temperature))
         self.thread.daemon = True
         self.thread.start()
         return None
@@ -580,4 +602,3 @@ if __name__ == '__main__':
     m.pd_config(-6.0, nplc = 1, Ncount = 10)
     
     m.pd_outpon()
-
